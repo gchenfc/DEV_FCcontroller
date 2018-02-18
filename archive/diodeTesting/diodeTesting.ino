@@ -19,15 +19,9 @@
 #define PWM_RES 12
 #define MAXPWM 4096
 
-#define KpPower 0.003
-#define KiPower 0.0001
-#define KdPower 0.000005
-#define KpCurrent .02
-#define KiCurrent 0.001
-#define KdCurrent 0.0001
-#define Kp KpPower
-#define Ki KiPower
-#define Kd KdPower
+#define Kp .002
+#define Ki 0.07
+#define Kd 0.00000001
 
 double FCvoltage = 0.0;
 double FCcurrent = 0.0;
@@ -38,24 +32,19 @@ double SCpower = 0.0;
 
 float dutyCycle = 0.0;
 
-double desPowerIn = 0; // reset each iteration of loop
+double desCurrentIn = .1;
 float error = 0.0;
 PID pid;
-// statistical error calculation
-unsigned long errorCount = 0;
-float errorMean = 0;
-float errorM2 = 0;
 
 // use these to control purging frequency and duration
 Metro updateDCTimer = Metro(1);
 Metro printStatsTimer = Metro(20);
 Metro getTempTimer = Metro(10);
 Metro purgeTimer = Metro(20000);
-Metro purgeEndTimer = Metro(0);
+Metro purgeEndTimer = Metro(20);
 Metro fanUpdateTimer = Metro(100);
 Metro shortCircuitTimer = Metro(10000);
-Metro shortCircuitEndTimer = Metro(0);
-Metro shortCircuitRecovTimer = Metro(0);
+Metro shortCircuitEndTimer = Metro(10);
 
 double FCtemp = 0.0;
 double fanPrct = .80;
@@ -86,9 +75,9 @@ void setup() {
   // set up PID controller
   pid = PID(&error, &dutyCycle, Kp,Ki,Kd,FORWARD);
   pid.setLimits(0,.2);
-  pid.setPLimits(-.5,.15);
-  pid.setILimits(-.15,.15);
-  pid.setDLimits(-.01,.01);
+  pid.setPLimits(-.1,.1);
+  pid.setILimits(-.5,.5);
+  pid.setDLimits(-.001,.001);
 
   
   analogWrite(SFET,dutyCycle*MAXPWM);
@@ -104,9 +93,22 @@ void setup() {
   Serial.println("Beginning Loop");
 }
 
+void FuelCellBootup(){
+  Serial.println("Booting up Fuel Cell");
+  analogWrite(FAN,fanPrct*MAXPWM);
+  digitalWrite(PURGE,HIGH);
+  digitalWrite(SUPPLY,HIGH);
+  delay(3000);
+  analogWrite(PURGE,LOW);
+  purgeTimer.reset();
+}
+
 void loop() {
   // read sensors
-  updateStats();
+  updatePowerStats();
+  if(getTempTimer.check()){
+    FCtemp = LPF(FCtemp,readTemp(),.9);
+  }
   
   // Safety checks
   if (SCvoltage>60){
@@ -117,9 +119,9 @@ void loop() {
     Serial.println("FC power too high");
     emergencyPause();
   }
-  if (((FCvoltage<8) & (FCvoltage!=0) & (!shortCircuit)) || FCvoltage>20){
+  if (FCvoltage<8 || FCvoltage>20){
     Serial.println("FC voltage out of range");
-    emergencyPause();
+    emergencyShutdown();
   }
   if(FCtemp>65){
     Serial.print("FC Temperature Too High (");
@@ -129,7 +131,8 @@ void loop() {
   }
 
   // update controls
-  if(updateDCTimer.check() & (!shortCircuit)){
+  error = desCurrentIn-FCcurrent;
+  if(updateDCTimer.check()){
     updateDC();
   }
 
@@ -143,11 +146,9 @@ void loop() {
 
   if(shortCircuitTimer.check()){
     shortCircuit = true;
-    doShortCircuit();
-    shortCircuitRecovTimer.reset();
   }
-  if(shortCircuitRecovTimer.check()){
-    shortCircuit = false; // to give the voltage a chance to come back up
+  if(shortCircuitEndTimer.check()){
+    shortCircuit = false;
   }
   
   if(fanUpdateTimer.check()){
@@ -163,63 +164,10 @@ void loop() {
   }
   
   if (Serial.available()){
-    desPowerIn = Serial.parseFloat();
+    desCurrentIn = Serial.parseFloat();
   }
 }
 
-void updateDC(){
-//  rampDC()
-
-//  dutyCycle = 0.054;
-
-  desPowerIn = 20.5;
-  error = desPowerIn-FCpower;
-  pid.update();
-  
-  // error stats
-  if((millis()-startTime)>5000){
-    errorCount += 1;
-    float delta = error-errorMean;
-    errorMean += delta/errorCount;
-    float delta2 = error-errorMean;
-    errorM2 += delta*delta2;
-  }
-
-  analogWrite(SFET,dutyCycle*MAXPWM);
-}
-
-void rampDC(){
-  int tConst = 180;
-  float minVal = 0;
-  float maxVal = 50;
-  float stayTime = 15;
-  float deltaPower = (maxVal-minVal)/(tConst/2/stayTime);
-  if((millis()-startTime)/1000.0>tConst){
-    startTime=millis();
-  }
-  if (((millis()-startTime)/1000.0)<(tConst/2)){
-    desPowerIn = (millis()-startTime)/1000.0*((maxVal-minVal)/tConst*2) + minVal;
-    desPowerIn = round(desPowerIn/deltaPower)*deltaPower;
-  }
-  else{
-    desPowerIn = 2*(maxVal-minVal) - (millis()-startTime)/1000.0*((maxVal-minVal)/tConst*2) + minVal;
-    desPowerIn = round(desPowerIn/deltaPower)*deltaPower;
-  }
-  if(desPowerIn>11){
-    desPowerIn=11;
-  }
-}
-
-// FC startup and shutdown
-void FuelCellBootup(){
-  Serial.println("Booting up Fuel Cell");
-  analogWrite(FAN,fanPrct*MAXPWM);
-  digitalWrite(PURGE,HIGH);
-  digitalWrite(SUPPLY,HIGH);
-  delay(3000);
-  analogWrite(PURGE,LOW);
-  purgeTimer.reset();
-}
 void emergencyPause(){
   Serial.println("pausing for 5 secs");
   dutyCycle = 0;
@@ -228,8 +176,9 @@ void emergencyPause(){
   while((millis()-startTime)<5000){
     
     // read sensors
-    updateStats();
+    updatePowerStats();
     if(getTempTimer.check()){
+      Serial.println(readTemp());
       FCtemp = readTemp();
     }
     
@@ -249,8 +198,9 @@ void emergencyShutdown(){
   while(true){
     
     // read sensors
-    updateStats();
+    updatePowerStats();
     if(getTempTimer.check()){
+      Serial.println(readTemp());
       FCtemp = readTemp();
     }
     
@@ -266,28 +216,50 @@ void emergencyShutdown(){
     }
   }
 }
-void doShortCircuit(){ // WARNING - THIS CODE IS BLOCKING, intentional
-  shortCircuitEndTimer.reset();
-  float oldDC = dutyCycle;
-  dutyCycle = 1;
-  analogWrite(SFET,dutyCycle*MAXPWM);
-  while(!shortCircuitEndTimer.check()){
-    updateStats();
-    printStatsSerial(); // so that data collection is more accurate
+
+void updateDC(){
+//  if ((millis()-startTime)/1000.0<10){
+//    dutyCycle = 0;
+//    analogWrite(SFET,dutyCycle*MAXPWM);
+//    return;
+//  }
+  int tConst = 180;
+  float minVal = 0;
+  float maxVal = 2;
+  float stayTime = 15;
+  float deltaCurrent = (maxVal-minVal)/(tConst/2/stayTime);
+//  if((millis()-startTime)/1000.0>tConst){
+//    startTime=millis();
+//  }
+  if (((millis()-startTime)/1000.0)<(tConst/2)){
+    desCurrentIn = (millis()-startTime)/1000.0*((maxVal-minVal)/tConst*2) + minVal;
+    desCurrentIn = round(desCurrentIn/deltaCurrent)*deltaCurrent;
   }
-  dutyCycle = oldDC;
+  else{
+    desCurrentIn = 2*(maxVal-minVal) - (millis()-startTime)/1000.0*((maxVal-minVal)/tConst*2) + minVal;
+    desCurrentIn = round(desCurrentIn/deltaCurrent)*deltaCurrent;
+  }
+//    dutyCycle=.02;
+//    dutyCycle = .1*sin(1*(millis()-startTime)/1000.0/2/3.1415)+.15;
+//    desCurrentIn = 1;
+//    pid.update();
+  if(desCurrentIn>11){
+    desCurrentIn=11;
+  }
+////  dutyCycle = .00;
+  desCurrentIn = 1.6;
+
+//  pid.update();
+  dutyCycle = 0.054;
+
+  if(shortCircuit){
+    dutyCycle = 1;
+  }
   analogWrite(SFET,dutyCycle*MAXPWM);
-  shortCircuitRecovTimer.reset();
 }
 
-// stats management
 void printStatsSerial(){
-//  // plot for PID tuning
-//  Serial.print(error*10,5);
-//  Serial.print('\t');
-//  Serial.println(dutyCycle*100,3);
-  // normal data transmition
-  Serial.print((millis()-startTime)/1000.0,3);
+  Serial.print((millis()-startTime)/1000.0);
   Serial.print("s\t");
   Serial.print(FCvoltage,2);
   Serial.print("V\t");
@@ -301,13 +273,11 @@ void printStatsSerial(){
   Serial.print("A\t");
   Serial.print(SCpower,3);
   Serial.print("W\t\t");
-  Serial.print(desPowerIn,2);
-  Serial.print("W\t");
-//  Serial.print(errorM2/(errorCount-1)*1000);
-//  Serial.print("mW\t");
-  Serial.print(dutyCycle*100,3);
+  Serial.print(desCurrentIn,2);
+  Serial.print("A\t");
+  Serial.print(dutyCycle*100,2);
   Serial.print("%\t");
-  Serial.print((FCpower<0.01 ? 0 : SCpower/FCpower*100),2);
+  Serial.print(SCpower/FCpower*100,2);
   Serial.print("%\t");
   Serial.print(tempCtoF(FCtemp));
   Serial.print("°F\t");
@@ -317,18 +287,15 @@ void printStatsSerial(){
 //    Serial.print("mg/m\t");
   Serial.println();
 }
-void updateStats(){
-  FCvoltage = LPF(FCvoltage,readFCvoltage(),.9); //LPF(FCvoltage,readFCvoltage(),.99);
-  FCcurrent = LPF(FCcurrent,readFCcurrent(),.9); //LPF(FCcurrent,readFCcurrent(),.99);
+void updatePowerStats(){
+  FCvoltage = readFCvoltage(); //LPF(FCvoltage,readFCvoltage(),.99);
+  FCcurrent = readFCcurrent(); //LPF(FCcurrent,readFCcurrent(),.99);
   SCvoltage = readSCvoltage(); //LPF(SCvoltage, readSCvoltage(), .99); // smooth/filter
   SCcurrent = readSCcurrent(); //LPF(SCcurrent, readSCcurrent(), .99);
   FCpower = FCvoltage*FCcurrent; //LPF(FCpower,FCvoltage*FCcurrent,.9);
   SCpower = SCvoltage*SCcurrent;
   if(shortCircuit){
     FCpower = 0;
-  }
-  if(getTempTimer.check()){
-    FCtemp = LPF(FCtemp,readTemp(),.95);
   }
 }
 double LPF(double oldVal, double newVal, double alpha){
@@ -362,14 +329,12 @@ double tempCtoF(double tempC){
   return tempC*9/5 + 32;
 }
 
-// INA I2C
 void INAinit()
 {
   Wire.beginTransmission(0x40);
   Wire.write(0x00);//reg select = 0x00
-  // 0000 000 001 100 111
-  Wire.write(0b0000);//64 averages, 1ms voltage sampling
-  Wire.write(0b1100111);//140us current sampling, free running
+  Wire.write(0b0111);//64 averages, 1ms voltage sampling
+  Wire.write(0b100111);//1ms current sampling, free running
   Wire.endTransmission();
 }
 uint16_t INAreadReg(uint8_t reg)
@@ -380,7 +345,7 @@ uint16_t INAreadReg(uint8_t reg)
 
   Wire.requestFrom(0x40, 2);
 
-  delayMicroseconds(50); // originally 100
+  delayMicroseconds(100);
   if (Wire.available() < 2)
     return 1337;
 
