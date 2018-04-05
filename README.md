@@ -1,3 +1,8 @@
+# Hydrogen Fuel Cell Controller + Voltage Converter Code
+Code versions are numbered according to:
+Controller_vX.X.Y
+where X.X is the PCB revision and where Y is the code subversion.  When running code, always run the latest subversion for the appropriate PCB revision.
+
 # Operating Instructions
 ## Startup Procedure
 Assuming the code is loaded onto the Teensy already (which is usually is, but if not see the section below), the startup procedure is as follows:
