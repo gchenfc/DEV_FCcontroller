@@ -19,7 +19,7 @@
 #define PWM_RES 12
 #define MAXPWM 4096
 
-#define KpPower 0.003
+#define KpPower 0.0003
 #define KiPower 0.0001
 #define KdPower 0.000005
 #define KpCurrent .02
@@ -172,7 +172,7 @@ void updateDC(){
 
 //  dutyCycle = 0.054;
 
-  desPowerIn = 20.5;
+  desPowerIn = 25;
   error = desPowerIn-FCpower;
   pid.update();
   

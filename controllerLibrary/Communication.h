@@ -1,0 +1,375 @@
+// ensure this library description is only included once
+#ifndef Communication_h
+#define Communication_h
+
+#include "Arduino.h"
+#include "Controller.h"
+#include "Converter.h"
+#include "Supercaps.h"
+#include "StatsManager.h"
+#include <i2c_t3.h>
+#include <Metro.h>
+
+#define I2Caddress 0x60
+#define I2Cspeed 40000
+
+// send/resp: check signals
+//	- master send and slave reply to make sure i2c is working
+// reg: register read
+//	- respond with 32bit signed int
+// com: command/acknowledge/failure to execute
+//	- master sends command + 32bit signed int (send 0 if N/A)
+//	- most commands are setpoints - i.e. try to make SC voltage 35V
+
+#define I2CsendCHECK	0x00
+#define I2CrespCHECK	-12345
+
+#define I2CregFCV	0x10
+#define I2CregFCI	0x11
+#define I2CregSCV	0x12
+#define I2CregSCI	0x13
+#define I2CregFCP	0x14
+#define I2CregSCP	0x15
+#define I2CregH2FLOW	0x16
+#define I2CregH2TOT	0x17
+#define I2CregDC		0x18
+#define I2CregFAN	0x19
+#define I2CregSTATUS	0x1E
+#define I2CregNUM	0x1F
+
+// define PID target
+//	ex. SCV means try to match SC voltage to setpoint
+#define I2CcomFCV	0x20
+#define I2CcomFCI	0x21
+#define I2CcomSCV	0x22
+#define I2CcomSCI	0x23
+#define I2CcomFCP	0x24
+#define I2CcomSCP	0x25
+#define I2CcomPIDLIM	0x26
+#define I2CcomSTART	0x2A
+#define I2CcomSTOP	0x2B
+#define I2CcomPAUSE	0x2C
+#define I2CcomDCM	0x2D
+#define I2CcomCCM	0x2E
+
+volatile bool i2cDoCMD;
+volatile bool i2cCMDerror;
+volatile uint8_t i2cCMD;
+volatile uint8_t i2cCOM;
+volatile int32_t i2cCMDval;
+uint8_t i2cmem[4];
+
+Metro printStatsTimer = Metro(20);
+Metro parseSerialTimer = Metro(100);
+// serial
+char buf[10];
+int bufInd = 0;
+
+extern uint32_t startTime;
+extern double desPowerIn;
+
+extern FCController FC;
+extern Supercaps SC;
+extern Converter Conv;
+extern StatsManager Stats;
+
+void Comm_update();
+void printStatsSerial();
+void parseSerial();
+void Comm_setup();
+void i2cReceiveEvent(size_t howMany);
+void i2cReadVal(uint8_t cmd);
+void i2cmemStore(int32_t val);
+void i2cDoCmd(uint8_t cmd, int32_t val);
+void i2cRequestEvent();
+
+void Comm_update(){
+	if (i2cDoCMD){
+		i2cDoCmd(i2cCOM,i2cCMDval);
+	}
+
+	if(printStatsTimer.check()){
+    printStatsSerial();
+  }
+
+  if (parseSerialTimer.check()){
+    parseSerial();
+  }
+}
+
+void printStatsSerial(){
+	//  // plot for PID tuning
+	//  Serial.print(error*100,5);
+	//  Serial.print('\t');
+	//  Serial.print(FCpower,5);
+	//  Serial.print('\t');
+	//  Serial.print(setpointPower,5);
+	//  Serial.print('\t');
+	//  Serial.println(dutyCycle*100,3);
+  // normal data transmition
+  Serial.print((millis()-startTime)/1000.0,3);
+  Serial.print("s\t");
+  Serial.print(FC.voltage,2);
+  Serial.print("V\t");
+  Serial.print(FC.current,3);
+  Serial.print("A\t");
+  Serial.print(FC.power,3);
+  Serial.print("W\t\t");
+  Serial.print(SC.voltage,2);
+  Serial.print("V\t");
+  Serial.print(SC.current,3);
+  Serial.print("A\t");
+  Serial.print(SC.power,3);
+  Serial.print("W\t\t");
+  Serial.print(Conv.setpointPower,2);
+  Serial.print("W\t");
+  Serial.print(Conv.Kcrit,3);
+  Serial.print("\t");
+  Serial.print(Conv.K,3);
+  Serial.print("\t");
+  Serial.print(Conv.dutyCycle*100,3);
+  Serial.print("%\t");
+  Serial.print(Stats.converterEff*100,2);
+  Serial.print("%\t");
+  Serial.print(tempCtoF(FC.temp));
+  Serial.print("°F\t");
+	//    Serial.print(flowmeter.readVoltage(),5);
+	//    Serial.print("V\t");
+	//    Serial.print(flowmeter.readFlow(),2);
+	//    Serial.print("mg/m\t");
+  Serial.println();
+
+  if (FC.errorDisp){
+    Serial.print(FC.errorMsg);
+    FC.errorDisp = false;
+    FC.errorMsg[0] = 0;
+  }
+  if (Conv.errorDisp){
+    Serial.print(Conv.errorMsg);
+    Conv.errorDisp = false;
+    Conv.errorMsg[0] = 0;
+  }
+  if (SC.errorDisp){
+    Serial.print(SC.errorMsg);
+    SC.errorDisp = false;
+    SC.errorMsg[0] = 0;
+  }
+}
+void parseSerial(){
+  float lim = 0;
+  if (Serial.available()){
+    char c = Serial.read();
+    switch(c){
+      case 'p':
+        FC.emergencyPause();
+        break;
+      case 'S':
+      case 's':
+        FC.emergencyShutdown();
+        break;
+      case 'b':
+        FC.bootup();
+        Conv.pause(1100);
+        break;
+      case 'r':
+        Conv.doShortCircuit();
+        break;
+      case 'F':
+        FC.setFan((float)atof(buf));
+        for (int i=0;i<bufInd;i++){
+          buf[i] = 0;
+        }
+        bufInd = 0;
+        break;
+      case 'L':
+        lim = (float)atof(buf);
+        Conv.pid.setLimits(0,lim);
+        Conv.pid.setILimits(-.15,lim);
+        for (int i=0;i<bufInd;i++){
+          buf[i] = 0;
+        }
+        bufInd = 0;
+        break;
+      case 'W':
+        desPowerIn = (float)atof(buf);
+        for (int i=0;i<bufInd;i++){
+          buf[i] = 0;
+        }
+        bufInd = 0;
+        break;
+      case '0':case '1':case '2':case '3':case '4':
+      case '5':case '6':case '7':case '8':case '9':
+      case '.':case '-':
+        buf[bufInd] = c;
+        bufInd++;
+        break;
+      case 'c':
+        if (Conv.K<Conv.Kcrit){
+          Serial.println("Cannot go into CCM:");
+          Serial.print("K = ");
+          Serial.print(Conv.K,5);
+          Serial.print("\t");
+          Serial.print("Kcrit = ");
+          Serial.println(Conv.Kcrit,5);
+          Serial.println("Staying in DCM");
+          break;
+        }
+        Conv.CCM = true;
+//        Conv.initializeDC();
+				// dutyCycle = 1-FCvoltage/SCvoltage;
+				// setDC(dutyCycle);
+        break;
+      case 'd':
+        Conv.CCM = false;
+        Conv.initializeDC();
+        break;
+    }
+  }
+}
+
+void Comm_setup(){
+  Wire1.begin(I2C_SLAVE, I2Caddress, I2C_PINS_29_30, I2C_PULLUP_EXT, I2Cspeed);
+  pinMode(18,INPUT);
+  pinMode(19,INPUT);
+  Wire1.onReceive(i2cReceiveEvent);
+  Wire1.onRequest(i2cRequestEvent);
+
+  i2cDoCMD = false;
+  i2cCMDerror = false;
+  i2cCMD = 0;
+  i2cCOM = 0;
+  i2cCMDval = 0;
+  memset(i2cmem,0,sizeof(i2cmem));
+}
+void i2cReceiveEvent(size_t count) {
+	Serial.println("GOT SOMETHING");
+	if(count){
+		i2cCMD = Wire1.readByte();
+		switch(i2cCMD>>4){
+			case (I2CsendCHECK>>4):
+				i2cmemStore((int32_t)I2CrespCHECK);
+				break;
+			case (I2CregFCV>>4):
+				i2cReadVal(i2cCMD); // sets i2cmem
+				break;
+			case (I2CcomFCV>>4): // don't respond
+				if (Wire1.available()>=4){
+					i2cCMDval = Wire1.readByte();
+					i2cCMDval |= Wire1.readByte() << 8;
+					i2cCMDval |= Wire1.readByte() << 16;
+					i2cCMDval |= Wire1.readByte() << 24;
+					i2cCOM = i2cCMD;
+					i2cDoCMD = true; // will process during next call to update()
+				}
+				break;
+		}
+	}
+}
+void i2cReadVal(uint8_t cmd){
+	switch(cmd){
+		case I2CregFCV:
+			i2cmemStore((int32_t) (FC.voltage*1000));
+			break;
+		case I2CregFCI:
+			i2cmemStore((int32_t) (FC.current*1000));
+			break;
+		case I2CregFCP:
+			i2cmemStore((int32_t) (FC.power*1000));
+			break;
+		case I2CregSCV:
+			i2cmemStore((int32_t) (SC.voltage*1000));
+			break;
+		case I2CregSCI:
+			i2cmemStore((int32_t) (SC.current*1000));
+			break;
+		case I2CregSCP:
+			i2cmemStore((int32_t) (SC.power*1000));
+			break;
+		case I2CregH2FLOW:
+			i2cmemStore((int32_t) 0);
+			break;
+		case I2CregH2TOT:
+			i2cmemStore((int32_t) 0);
+			break;
+		case I2CregDC:
+			i2cmemStore((int32_t) (Conv.dutyCycle*1000));
+			break;
+		case I2CregFAN:
+			i2cmemStore((int32_t) (FC.getFan()*1000));
+			break;
+		case I2CregSTATUS:
+			i2cmemStore((int32_t) (Stats.status));
+			break;
+		case I2CregNUM:
+			i2cmemStore((int32_t) (Stats.statusAuxNum));
+			break;
+	}
+}
+void i2cmemStore(int32_t value){
+	i2cmem[0] = value & 0xFF;
+	i2cmem[1] = (value >> 8) & 0xFF;
+	i2cmem[2] = (value >> 16) & 0xFF;
+	i2cmem[3] = (value >> 24) & 0xFF;
+}
+void i2cDoCmd(uint8_t cmd,int32_t val){
+	switch(cmd){
+		case I2CcomFCV:
+		case I2CcomFCI:
+		case I2CcomSCV:
+		case I2CcomSCI:
+			// not yet implemented
+			break;
+		case I2CcomFCP:
+			desPowerIn = val/1000.0;
+			break;
+		case I2CcomSCP:
+			// not yet implemented
+			break;
+		case I2CcomPIDLIM:;
+      Conv.pid.setLimits(0,val/1000.0);
+      Conv.pid.setILimits(-.15,val/1000.0);
+      break;
+		case I2CcomSTART:
+      FC.bootup();
+      Conv.pause(1100);
+      break;
+		case I2CcomSTOP:
+      FC.emergencyShutdown();
+      break;
+		case I2CcomPAUSE:
+			FC.emergencyPause();
+			break;
+		case I2CcomDCM:
+	    Conv.CCM = false;
+	    Conv.initializeDC();
+	    break;
+		case I2CcomCCM:
+			if (Conv.K<Conv.Kcrit){
+        Serial.println("Cannot go into CCM:");
+        Serial.print("K = ");
+        Serial.print(Conv.K,5);
+        Serial.print("\t");
+        Serial.print("Kcrit = ");
+        Serial.println(Conv.Kcrit,5);
+        Serial.println("Staying in DCM");
+        break;
+      }
+      else{
+	      Conv.CCM = true;
+	      Conv.initializeDC();
+				// dutyCycle = 1-FCvoltage/SCvoltage;
+				// setDC(dutyCycle);
+	    }
+      break;
+	}
+}
+void i2cRequestEvent(void){
+	switch (i2cCMD>>4){
+		case (I2CsendCHECK>>4):
+		case (I2CregFCV>>4):
+			Wire1.write(&i2cmem[0],4);
+			break;
+	}
+}
+
+#endif
