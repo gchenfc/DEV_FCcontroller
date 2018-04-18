@@ -26,5 +26,12 @@
 // 12V voltage divider
 #define STABLE12_MULT 10
 
+// short circuit codes
+#define SC_OFF 0
+#define SC_RAMPUP 1
+#define SC_HOLD 2
+#define SC_RAMPDOWN 3
+#define SC_RECOV 4
+
 #endif
 

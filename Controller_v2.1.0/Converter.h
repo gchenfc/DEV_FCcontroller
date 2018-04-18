@@ -25,7 +25,9 @@ class Converter{
 		void update();
 		void updateSetpoint();
 		void testingCycleDC();
-		void doShortCircuit();
+    void startShortCircuit();
+    void startShortCircuit(uint32_t duration);
+    void updateSC();
 		double check12V();
 
 		double predictedM();
@@ -46,13 +48,17 @@ class Converter{
 
 		// converter control vars
 		bool enabled = false;
+    bool allGood = true;
 		bool statsLag = false;
 		bool shortCircuit = false;
 
 		bool shortCircuitEnabled = false;
 		Metro shortCircuitTimer = Metro(10000);
 		Metro shortCircuitEndTimer = Metro(10);
-		Metro shortCircuitRecovTimer = Metro(10);
+		Metro shortCircuitRecovTimer = Metro(100);
+    uint8_t shortCircuitStatus = SC_OFF;
+    uint32_t shortCircuitDuration = 0;
+    uint32_t shortCircuitRefTime = 0;
 
 		float dutyCycleAdj = 0.0; // not implemented
 		float dutyCycleBase = 0.0; // not implemented

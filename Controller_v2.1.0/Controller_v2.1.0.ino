@@ -6,7 +6,7 @@
 #include "Metro.h"
 
 uint32_t startTime;
-double desPowerIn = 10;
+double desPowerIn = 30;
 
 FCController FC = FCController();
 Supercaps SC = Supercaps();
@@ -22,8 +22,6 @@ Metro watchdogTimer = Metro(10);
 void setup() {// board setting vars
   // put your setup code here, to run once:
   kickDog();
-  pinMode(LED4, OUTPUT);
-  digitalWrite(LED4, HIGH);
   
   delay(100);
   Serial.println("Finished Initiazing");
@@ -50,28 +48,18 @@ void setup() {// board setting vars
 
   analogReference(EXTERNAL);
   
-  pinMode(LED1,OUTPUT); //put as input earlier ^^
-  pinMode(LED2,OUTPUT);
-  pinMode(LED3,OUTPUT);
-  pinMode(LED4,OUTPUT);
-  pinMode(DIP1,INPUT);
-  pinMode(DIP2,INPUT);
-  pinMode(DIP3,INPUT);
-  pinMode(DIP4,INPUT);
-  
   startTime = millis();
   
   Serial.println("Finished setup");
   Serial.println("Beginning Loop");
-  //digitalWriteFast(LED4,HIGH);
 }
 
 void loop() {
   Stats.updateStats();
   
-  FC.doSafetyChecks(Conv.shortCircuit);
+  FC.doSafetyChecks(Conv.shortCircuit,&Conv.setpointPower);
   Conv.doSafetyChecks();
-  SC.doSafetyChecks(&desPowerIn);
+  SC.doSafetyChecks(&Conv.setpointPower);
 
   if (FC.fault){
     Conv.pause(FC.faultDuration);
@@ -82,6 +70,11 @@ void loop() {
     Conv.pause(SC.faultDuration);
     SC.faultDuration = 0;
     SC.fault = false;
+  }
+  if (FC.requestShort){
+    Conv.startShortCircuit(FC.shortDuration);
+    FC.requestShort = false;
+    FC.shortDuration = 0;
   }
 
   FC.update();

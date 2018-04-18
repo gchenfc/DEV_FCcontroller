@@ -16,6 +16,7 @@ class Supercaps{
 
 		bool fault = false;
 		uint32_t faultDuration = 0;
+    bool allGood = true;
 
 		char errorMsg[200];
 		bool errorDisp = false;

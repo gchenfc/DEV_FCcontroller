@@ -21,8 +21,8 @@ FCController::FCController(){
   pinMode(SUPPLY,OUTPUT);
 }
 
-void FCController::doSafetyChecks(bool shortCircuit){
-  bool allGood = true;
+void FCController::doSafetyChecks(bool shortCircuit,double* setpointPower){
+  allGood = true;
   if ((!enabled) || (startingUp) || (paused)){
     digitalWriteFast(LED1,LOW);
     return;
@@ -34,7 +34,10 @@ void FCController::doSafetyChecks(bool shortCircuit){
     allGood = false;
     emergencyPause();
   }
-  if (((voltage<12) & (voltage!=0) & (!shortCircuit)) || voltage>20){
+  if ((voltage<12) && (voltage!=0) && (!shortCircuit)) {
+    *setpointPower = max(*setpointPower*.99999*(voltage-11)/1,10);
+  }
+  if (((voltage<11) && (voltage!=0) && (!shortCircuit)) || (voltage>20)){
     sprintf(errorMsg,"%sFC voltage out of range... "
       "%.3fV\n",errorMsg,voltage);
     errorDisp = true;
@@ -61,8 +64,10 @@ void FCController::bootup(){
   startingUp = true;
   postStartupTimer.reset();
 }
-void postStartup(){
+void FCController::postStartup(){
   digitalWrite(PURGE,LOW);
+  requestShort = true;
+  shortDuration = 200;
   // analogWrite(FAN,fanPrct*MAXPWM); // this will automatically update
   // purgeTimer.reset(); // whatever
 }
@@ -122,6 +127,7 @@ void FCController::update(){
 
   if(paused && pausedTimer.check()){
     paused = false;
+    fault = false;
   }
 }
 

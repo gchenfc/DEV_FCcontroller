@@ -26,5 +26,7 @@
 #define DIP3 13
 #define DIP4 12
 
+#define BUZZ 20
+
 #endif
 

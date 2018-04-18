@@ -26,11 +26,11 @@ void StatsManager::initializeStats(){
   *SCpower = (*SCvoltage)*(*SCcurrent);
 }
 void StatsManager::updateStats(){
-  *FCvoltage = LPF(*FCvoltage,readFCvoltage(),.9); //LPF(*FCvoltage,readFCvoltage(),.99);
+  *FCvoltage = LPF(*FCvoltage,readFCvoltage(),.95); //LPF(*FCvoltage,readFCvoltage(),.99);
   *FCcurrent = LPF(*FCcurrent,readFCcurrent(),.95); //LPF(*FCcurrent,readFCcurrent(),.99);
   *SCvoltage = LPF(*SCvoltage,readSCvoltage(),.95); //LPF(*SCvoltage, readSCvoltage(), .99); // smooth/filter
   *SCcurrent = LPF(*SCcurrent,readSCcurrent(),.95); //LPF(*SCcurrent, readSCcurrent(), .99);
-  *FCpower = (*FCvoltage)*(*FCcurrent); //LPF(FCpower,FCvoltage*FCcurrent,.9);
+  *FCpower = LPF(*FCpower,(*FCvoltage)*(*FCcurrent),.9); //LPF(FCpower,FCvoltage*FCcurrent,.9);
   *SCpower = (*SCvoltage)*(*SCcurrent);
   converterEff = LPF(converterEff,((*FCpower)<0.01 ? 0 : (*SCpower)/(*FCpower)),.99);
   if(*shortCircuit){

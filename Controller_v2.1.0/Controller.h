@@ -17,8 +17,9 @@
 class FCController{
 	public:
 		FCController();
-		void doSafetyChecks(bool shortCircuit);
+		void doSafetyChecks(bool shortCircuit,double* setpointPower);
 		void bootup();
+    void postStartup();
 		void shutdown();
 		void emergencyPause();
 		void emergencyShutdown();
@@ -26,6 +27,8 @@ class FCController{
 
 		bool enabled;
 		bool purgeEnabled;
+    bool requestShort;
+    uint32_t shortDuration;
 
 		bool startingUp = false;
 		bool shuttingDown = false;
@@ -37,6 +40,7 @@ class FCController{
 
 		bool fault = false;
 		uint32_t faultDuration = 0;
+    bool allGood = true;
 
 		char errorMsg[200];
 		bool errorDisp = false;
@@ -46,7 +50,7 @@ class FCController{
 	private:
 
 		// FC control timers
-		Metro purgeTimer = Metro(20000);
+		Metro purgeTimer = Metro(10000);
 		Metro purgeEndTimer = Metro(20);
 		Metro fanUpdateTimer = Metro(500);
 		Metro postStartupTimer = Metro(1000);

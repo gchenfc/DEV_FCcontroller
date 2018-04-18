@@ -18,9 +18,9 @@ Converter::Converter(uint32_t* startTime, double* desPowerIn,
 
 	// set up PID controller
 	pid = PID(&error, &dutyCycle, Kp,Ki,Kd,FORWARD);
-	pid.setLimits(0,.5);
+	pid.setLimits(0,.75);
 	pid.setPLimits(-.15,.15);
-	pid.setILimits(-.15,.5);
+	pid.setILimits(-.15,.75);
 	pid.setDLimits(-.01,.01);
 
 	prevTime = micros();
@@ -29,8 +29,11 @@ Converter::Converter(uint32_t* startTime, double* desPowerIn,
 }
 
 void Converter::doSafetyChecks(){
-	
-	bool allGood = true;
+  allGood =true;
+  if ((true) && (*SCvoltage < 33)){ // hack - restructure this code later
+//    setpointPower += .05;
+//    setpointPower = min(setpointPower,100);
+  }
 	if ((*FCcurrent>13) && (!shortCircuit)){
 		Serial.print("Too much input current - converter pausing... ");
 		Serial.print(*FCcurrent,3);
@@ -45,7 +48,7 @@ void Converter::doSafetyChecks(){
 		allGood = false;
 		pause();
 	}
-	if ((*FCvoltage<3) && (*FCcurrent>1)){ // probably shorted
+	if ((!shortCircuit) && (*FCvoltage<3) && (*FCcurrent>1)){ // probably shorted
 		countShorts += 1;
 		if (countShorts<10){
 			Serial.print("Short suspected - converter pausing... #");
@@ -133,9 +136,13 @@ void Converter::doSafetyChecks(){
 			}
 			else{ 
 				if (abs(*SCvoltage/ *FCvoltage - predictedM()) > (.15*expectedLossPrct)){
-					sprintf(errorMsg,"%sUnknown error - pausing operation\n",errorMsg);
+					sprintf(errorMsg,"%sUnknown error - not pausing operation\n",errorMsg);
 					errorDisp = true;
-					pause();
+          statsLag = true;
+          statsLagTimer.reset();
+          pid.reset();
+          setpointPower = 10;
+//					pause();
 				}
 				else{
 					sprintf(errorMsg,"%sUnknown error - continuing operation\n",errorMsg);
@@ -237,7 +244,7 @@ void Converter::initializeDC(){
 	// pid.update();
 }
 void Converter::setDC(double DC){
-	if (DC>.75){
+	if ((!shortCircuit) && (DC>.75)){
 		DC = .75;
 	}
 	if (DC<0){
@@ -276,48 +283,42 @@ void Converter::update(){
 
 	if(shortCircuitEnabled){
 		if(shortCircuitTimer.check()){
-			doShortCircuit();
+			startShortCircuit();
 		}
 	}
-	if(shortCircuit && shortCircuitRecovTimer.check()){
-		shortCircuit = false; // to give the voltage a chance to come back up
-	}
+  if(shortCircuit){
+    updateSC();
+  }
 	
-	if (!(updateDCTimer.check() && (!shortCircuit))){
-		return;
-	}
-	
-
   // DCM criteria: K<Kcrit (then DCM occurs)
   K = 2*33e-6/((*SCvoltage)/(*SCcurrent)/PWM_FREQ);
   Kcrit = dutyCycle*(1-dutyCycle)*(1-dutyCycle);
-
-	if (CCM && (K<Kcrit)){
+  if (CCM && (K<Kcrit)){
     sprintf(errorMsg,"DCM criteria detected - switching to DCM...\n");
     errorDisp = true;
     CCM = false;
     initializeDC();
+    setDC(dutyCycle);
   }
   
-   // dutyCycle = 0.1;
-	error = setpointPower - (*FCpower);
-	pid.update();
-	updateSetpoint();
+  if (((updateDCTimer.check()) && (!shortCircuit)) || (shortCircuitStatus==SC_RECOV)){
+  	error = setpointPower - (*FCpower);
+  	pid.update();
+  	updateSetpoint();
+  
+  	//  dutyCycle = dutyCycleBase+dutyCycleAdj;
+  	
+  	// error stats
+  	if((millis()-(*startTime))>5000){
+  		errorCount += 1;
+  		float delta = error-errorMean;
+  		errorMean += delta/errorCount;
+  		float delta2 = error-errorMean;
+  		errorM2 += delta*delta2;
+  	}
 
-	//  dutyCycle = dutyCycleBase+dutyCycleAdj;
-	
-	// error stats
-	if((millis()-(*startTime))>5000){
-		errorCount += 1;
-		float delta = error-errorMean;
-		errorMean += delta/errorCount;
-		float delta2 = error-errorMean;
-		errorM2 += delta*delta2;
-	}
-//  delayedDC = LPF(delayedDC,dutyCycle,.99);
-//  delayedDC = dutyCycle-.05;
- 
-	setDC(dutyCycle);
+    setDC(dutyCycle);
+  }
 }
 void Converter::updateSetpoint(){
 	if (statsLag){
@@ -388,19 +389,50 @@ double Converter::predictedD(double M){
   }
 }
 
-void Converter::doShortCircuit(){ // WARNING - THIS CODE IS BLOCKING, intentional
-	// shortCircuit = true;
-	// shortCircuitEndTimer.reset();
-	// float oldDC = dutyCycle;
-	// dutyCycle = 1;
-	// setDC(dutyCycle);
-	// while(!shortCircuitEndTimer.check()){
-	//   // updateStats();
-	//   // printStatsSerial(); // so that data collection is more accurate
-	// }
-	// dutyCycle = oldDC;
-	// setDC(dutyCycle);
-	// shortCircuitRecovTimer.reset();
+void Converter::startShortCircuit(){ // WARNING - THIS CODE IS BLOCKING, intentional
+  startShortCircuit(10);
+}
+void Converter::startShortCircuit(uint32_t duration){ // WARNING - THIS CODE IS BLOCKING, intentional
+  shortCircuit = true;
+  shortCircuitDuration = duration;
+  shortCircuitStatus = SC_RAMPUP;
+  shortCircuitRefTime = micros();
+}
+void Converter::updateSC(){
+  switch(shortCircuitStatus){
+    case SC_OFF:
+      shortCircuit = false;
+      break;
+    case SC_RAMPUP:
+      if (dutyCycle>.99){
+        dutyCycle = 1;
+        shortCircuitStatus = SC_HOLD;
+        shortCircuitEndTimer.interval(shortCircuitDuration);
+        shortCircuitEndTimer.reset();
+      }
+      dutyCycle = min(1,dutyCycle+1.0*(micros()-shortCircuitRefTime)/1e6);
+      break;
+    case SC_HOLD:
+      dutyCycle = 1;
+      if (shortCircuitEndTimer.check()){
+        shortCircuitStatus = SC_RAMPDOWN;
+      }
+      break;
+    case SC_RAMPDOWN:
+      if (dutyCycle<.76){
+        shortCircuitStatus = SC_RECOV;
+        shortCircuitRecovTimer.reset();
+      }
+      dutyCycle = max(.75,dutyCycle-1.0*(micros()-shortCircuitRefTime)/1e6);
+      break;
+    case SC_RECOV:
+      if(shortCircuitRecovTimer.check()){
+        shortCircuit=false;
+        shortCircuitStatus = SC_OFF;
+      }
+      break;
+  }
+  setDC(dutyCycle);
 }
 double Converter::check12V(){
 //	stable12V = LPF(stable12V,analogRead(STABLE12V)*3.0/1024*STABLE12_MULT * 12.23/13.15,.8);

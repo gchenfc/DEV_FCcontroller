@@ -73,27 +73,138 @@ extern Supercaps SC;
 extern Converter Conv;
 extern StatsManager Stats;
 
+void Comm_setup();
 void Comm_update();
+void readDIPs();
 void printStatsSerial();
 void parseSerial();
-void Comm_setup();
 void i2cReceiveEvent(size_t howMany);
 void i2cReadVal(uint8_t cmd);
 void i2cmemStore(int32_t val);
 void i2cDoCmd(uint8_t cmd, int32_t val);
 void i2cRequestEvent();
 
+bool buzzersEnabled = false;
+
+Metro DIPcheckTimer = Metro(50);
+bool DIP1bounce,DIP2bounce,DIP3bounce,DIP4bounce;
+
+void Comm_setup(){
+  Wire1.begin(I2C_SLAVE, I2Caddress, I2C_PINS_29_30, I2C_PULLUP_EXT, I2Cspeed);
+  pinMode(18,INPUT);
+  pinMode(19,INPUT);
+  Wire1.onReceive(i2cReceiveEvent);
+  Wire1.onRequest(i2cRequestEvent);
+
+  i2cDoCMD = false;
+  i2cCMDerror = false;
+  i2cCMD = 0;
+  i2cCOM = 0;
+  i2cCMDval = 0;
+  memset(i2cmem,0,sizeof(i2cmem));  
+  
+  pinMode(LED1,OUTPUT);
+  pinMode(LED2,OUTPUT);
+  pinMode(LED3,OUTPUT);
+  pinMode(LED4,OUTPUT);
+  pinMode(DIP1,INPUT_PULLUP);
+  pinMode(DIP2,INPUT_PULLUP);
+  pinMode(DIP3,INPUT_PULLUP);
+  pinMode(DIP4,INPUT_PULLUP);
+  pinMode(BUZZ,OUTPUT);
+}
 void Comm_update(){
 	if (i2cDoCMD){
 		i2cDoCmd(i2cCOM,i2cCMDval);
 	}
 
-	if(printStatsTimer.check()){
+	if(printStatsTimer.check() || Conv.shortCircuit){
     printStatsSerial();
   }
 
   if (parseSerialTimer.check()){
     parseSerial();
+  }
+
+  if (DIPcheckTimer.check()){
+    readDIPs();
+  }
+  
+//  buzzersEnabled = digitalReadFast(DIP4);
+  buzzersEnabled = true;
+  if (buzzersEnabled){
+    if (FC.fault || !FC.allGood){
+      tone(BUZZ,6000);
+    }
+    else if (SC.fault || !SC.allGood){
+      tone(BUZZ,2000);
+    }
+    else if (!Conv.enabled || !Conv.enabled){
+      tone(BUZZ,3000);
+    }
+    else{
+      noTone(BUZZ);
+    }
+  }
+  else{
+    noTone(BUZZ);
+  }
+}
+void readDIPs(){
+  //        3
+  //      4   2
+  //        1
+  // (mounting holes)
+
+  // DO NOT USE BUTTON 2 - it's bad
+  pinMode(DIP1,OUTPUT);
+//  pinMode(DIP2,OUTPUT);
+  pinMode(DIP3,OUTPUT);
+  pinMode(DIP4,OUTPUT);
+  digitalWrite(DIP1,HIGH);
+//  digitalWrite(DIP2,HIGH);
+  digitalWrite(DIP3,HIGH);
+  digitalWrite(DIP4,HIGH);
+  pinMode(DIP1,INPUT_PULLUP);
+  if (!digitalRead(DIP1)){
+    if (!DIP1bounce){
+      desPowerIn = max(0,desPowerIn-10);
+    }
+    DIP1bounce = true;
+  }
+  else {
+    DIP1bounce = false;
+  }
+//  pinMode(DIP2,INPUT_PULLUP);
+//  if (!digitalRead(DIP2)){
+//    if (!DIP2bounce){
+//      Conv.startShortCircuit();
+//    }
+//    DIP2bounce = true;
+//  }
+//  else {
+//    DIP2bounce = false;
+//  }
+  pinMode(DIP3,INPUT_PULLUP);
+  if (!digitalRead(DIP3)){
+    if (!DIP3bounce){
+      desPowerIn = min(desPowerIn+10,100);
+    }
+    DIP3bounce = true;
+  }
+  else {
+    DIP3bounce = false;
+  }
+  pinMode(DIP4,INPUT_PULLUP);
+  if (!digitalRead(DIP4)){
+    if (!DIP4bounce){
+      FC.bootup();
+      Conv.pause(1100);
+    }
+    DIP4bounce = true;
+  }
+  else {
+    DIP4bounce = false;
   }
 }
 
@@ -123,9 +234,9 @@ void printStatsSerial(){
   Serial.print("W\t\t");
   Serial.print(Conv.setpointPower,2);
   Serial.print("W\t");
-  Serial.print(Conv.Kcrit,3);
+  Serial.print(Conv.pid.getkI(),3);
   Serial.print("\t");
-  Serial.print(Conv.K,3);
+  Serial.print(Conv.pid.getkP(),3);
   Serial.print("\t");
   Serial.print(Conv.dutyCycle*100,3);
   Serial.print("%\t");
@@ -172,7 +283,10 @@ void parseSerial(){
         Conv.pause(1100);
         break;
       case 'r':
-        Conv.doShortCircuit();
+        Conv.startShortCircuit();
+        break;
+      case 'u':
+        FC.purgeEnabled = !FC.purgeEnabled;
         break;
       case 'F':
         FC.setFan((float)atof(buf));
@@ -227,22 +341,8 @@ void parseSerial(){
   }
 }
 
-void Comm_setup(){
-  Wire1.begin(I2C_SLAVE, I2Caddress, I2C_PINS_29_30, I2C_PULLUP_EXT, I2Cspeed);
-  pinMode(18,INPUT);
-  pinMode(19,INPUT);
-  Wire1.onReceive(i2cReceiveEvent);
-  Wire1.onRequest(i2cRequestEvent);
-
-  i2cDoCMD = false;
-  i2cCMDerror = false;
-  i2cCMD = 0;
-  i2cCOM = 0;
-  i2cCMDval = 0;
-  memset(i2cmem,0,sizeof(i2cmem));
-}
 void i2cReceiveEvent(size_t count) {
-	Serial.println("GOT SOMETHING");
+//	Serial.println("GOT SOMETHING");
 	if(count){
 		i2cCMD = Wire1.readByte();
 		switch(i2cCMD>>4){
