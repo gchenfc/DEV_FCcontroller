@@ -45,6 +45,7 @@ class Converter{
 		uint32_t* startTime;
 		double setpointPower = 0; // constantly updated
 		double* desPowerIn; // stays until user changes
+    double desPowerInLowerLimit = 15;
 
 		// converter control vars
 		bool enabled = false;

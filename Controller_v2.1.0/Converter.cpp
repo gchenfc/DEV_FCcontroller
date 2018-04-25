@@ -18,9 +18,9 @@ Converter::Converter(uint32_t* startTime, double* desPowerIn,
 
 	// set up PID controller
 	pid = PID(&error, &dutyCycle, Kp,Ki,Kd,FORWARD);
-	pid.setLimits(0,.75);
+	pid.setLimits(0,.80);
 	pid.setPLimits(-.15,.15);
-	pid.setILimits(-.15,.75);
+	pid.setILimits(-.15,.80);
 	pid.setDLimits(-.01,.01);
 
 	prevTime = micros();
@@ -140,8 +140,8 @@ void Converter::doSafetyChecks(){
 					errorDisp = true;
           statsLag = true;
           statsLagTimer.reset();
-          pid.reset();
-          setpointPower = 10;
+//          pid.reset();
+//          setpointPower = 10;
 //					pause();
 				}
 				else{
@@ -317,6 +317,7 @@ void Converter::update(){
   		errorM2 += delta*delta2;
   	}
 
+//    dutyCycle = .6;
     setDC(dutyCycle);
   }
 }
@@ -327,11 +328,15 @@ void Converter::updateSetpoint(){
 	double deltaT = (double)(micros()-prevTime)/1e6;
 	prevTime = micros();
 	if (abs((*desPowerIn)-setpointPower)>1){ // off by more than 1
-		setpointPower = setpointPower + (20)*min(deltaT,.1)*(((*desPowerIn)>setpointPower)?1:-1);
+		setpointPower = setpointPower + (5)*min(deltaT,.1)*(((*desPowerIn)>setpointPower)?1:-1);
 	}
 	else{ // pretty close
 		setpointPower = setpointPower + ((*desPowerIn)-setpointPower)*1*min(deltaT,.1);
 	}
+
+  if ((setpointPower<desPowerInLowerLimit) && (*desPowerIn<desPowerInLowerLimit) && (*SCvoltage<39)){
+    *desPowerIn = desPowerInLowerLimit;
+  }
 	// if (abs(error)<1){1
 	// dutyCycleBase = LPF(
 	//  dutyCycleBase,
@@ -389,10 +394,10 @@ double Converter::predictedD(double M){
   }
 }
 
-void Converter::startShortCircuit(){ // WARNING - THIS CODE IS BLOCKING, intentional
+void Converter::startShortCircuit(){ // not blocking :)
   startShortCircuit(10);
 }
-void Converter::startShortCircuit(uint32_t duration){ // WARNING - THIS CODE IS BLOCKING, intentional
+void Converter::startShortCircuit(uint32_t duration){ // not blocking :)
   shortCircuit = true;
   shortCircuitDuration = duration;
   shortCircuitStatus = SC_RAMPUP;

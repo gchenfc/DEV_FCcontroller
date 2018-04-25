@@ -7,6 +7,7 @@
 #include "Converter.h"
 #include "Supercaps.h"
 #include "StatsManager.h"
+#include "Constants.h"
 #include <i2c_t3.h>
 #include <Metro.h>
 
@@ -65,6 +66,9 @@ Metro parseSerialTimer = Metro(100);
 char buf[10];
 int bufInd = 0;
 
+Metro resetButtonTimer = Metro(1000);
+bool resetButtonRecent = false;
+
 extern uint32_t startTime;
 extern double desPowerIn;
 
@@ -107,10 +111,10 @@ void Comm_setup(){
   pinMode(LED2,OUTPUT);
   pinMode(LED3,OUTPUT);
   pinMode(LED4,OUTPUT);
-  pinMode(DIP1,INPUT_PULLUP);
-  pinMode(DIP2,INPUT_PULLUP);
-  pinMode(DIP3,INPUT_PULLUP);
-  pinMode(DIP4,INPUT_PULLUP);
+  pinMode(DIP1,INPUT);
+  pinMode(DIP2,INPUT);
+  pinMode(DIP3,INPUT);
+  pinMode(DIP4,INPUT);
   pinMode(BUZZ,OUTPUT);
 }
 void Comm_update(){
@@ -127,7 +131,7 @@ void Comm_update(){
   }
 
   if (DIPcheckTimer.check()){
-    readDIPs();
+//    readDIPs();
   }
   
 //  buzzersEnabled = digitalReadFast(DIP4);
@@ -151,61 +155,98 @@ void Comm_update(){
   }
 }
 void readDIPs(){
-  //        3
-  //      4   2
-  //        1
-  // (mounting holes)
-
-  // DO NOT USE BUTTON 2 - it's bad
-  pinMode(DIP1,OUTPUT);
-//  pinMode(DIP2,OUTPUT);
-  pinMode(DIP3,OUTPUT);
-  pinMode(DIP4,OUTPUT);
-  digitalWrite(DIP1,HIGH);
-//  digitalWrite(DIP2,HIGH);
-  digitalWrite(DIP3,HIGH);
-  digitalWrite(DIP4,HIGH);
-  pinMode(DIP1,INPUT_PULLUP);
-  if (!digitalRead(DIP1)){
-    if (!DIP1bounce){
-      desPowerIn = max(0,desPowerIn-10);
-    }
-    DIP1bounce = true;
-  }
-  else {
-    DIP1bounce = false;
-  }
-//  pinMode(DIP2,INPUT_PULLUP);
-//  if (!digitalRead(DIP2)){
-//    if (!DIP2bounce){
-//      Conv.startShortCircuit();
+//  //        3
+//  //      4   2
+//  //        1
+//  // (mounting holes)
+//
+//  // DO NOT USE BUTTON 2 - it's bad
+//
+//  if (DIP_PULLUP==0){
+//    if (digitalRead(DIP1)){
+//      if (!DIP1bounce){
+//        desPowerIn = min(MAXDESPOWER,desPowerIn+15);
+//      }
+//      DIP1bounce = true;
 //    }
-//    DIP2bounce = true;
+//    else {
+//      DIP1bounce = false;
+//    }
+//    if (digitalRead(DIP3)){
+//      if (!DIP3bounce){
+////        desPowerIn = min(desPowerIn+10,MAXDESPOWER);
+//        desPowerIn = 15;
+//      }
+//      DIP3bounce = true;
+//    }
+//    else {
+//      DIP3bounce = false;
+//    }
+//    
+//    if (resetButtonTimer.check()){ // for double click
+//      resetButtonRecent = false;
+//    }
+//    if (!digitalRead(DIP4)){
+//      if (!DIP4bounce){
+//        if (resetButtonRecent){ // double click
+//          FC.bootup();
+//          Conv.pause(1100);
+//          resetButtonRecent = false;
+//        }
+//        else{
+//          Conv.startShortCircuit(50);
+//          resetButtonRecent = true;
+//          resetButtonTimer.reset();
+//        }
+//      }
+//      DIP4bounce = true;
+//    }
+//    else {
+//      DIP4bounce = false;
+//    }
 //  }
-//  else {
-//    DIP2bounce = false;
+//  
+//  if (DIP_PULLUP==1){
+//    pinMode(DIP1,OUTPUT);
+//  //  pinMode(DIP2,OUTPUT);
+//    pinMode(DIP3,OUTPUT);
+//    pinMode(DIP4,OUTPUT);
+//    digitalWrite(DIP1,HIGH);
+//  //  digitalWrite(DIP2,HIGH);
+//    digitalWrite(DIP3,HIGH);
+//    digitalWrite(DIP4,HIGH);
+//    pinMode(DIP1,INPUT_PULLUP);
+//    if (!digitalRead(DIP1)){
+//      if (!DIP1bounce){
+//        desPowerIn = max(0,desPowerIn-10);
+//      }
+//      DIP1bounce = true;
+//    }
+//    else {
+//      DIP1bounce = false;
+//    }
+//    pinMode(DIP3,INPUT_PULLUP);
+//    if (!digitalRead(DIP3)){
+//      if (!DIP3bounce){
+//        desPowerIn = min(desPowerIn+10,MAXDESPOWER);
+//      }
+//      DIP3bounce = true;
+//    }
+//    else {
+//      DIP3bounce = false;
+//    }
+//    pinMode(DIP4,INPUT_PULLUP);
+//    if (!digitalRead(DIP4)){
+//      if (!DIP4bounce){
+//        FC.bootup();
+//        Conv.pause(1100);
+//      }
+//      DIP4bounce = true;
+//    }
+//    else {
+//      DIP4bounce = false;
+//    }
 //  }
-  pinMode(DIP3,INPUT_PULLUP);
-  if (!digitalRead(DIP3)){
-    if (!DIP3bounce){
-      desPowerIn = min(desPowerIn+10,100);
-    }
-    DIP3bounce = true;
-  }
-  else {
-    DIP3bounce = false;
-  }
-  pinMode(DIP4,INPUT_PULLUP);
-  if (!digitalRead(DIP4)){
-    if (!DIP4bounce){
-      FC.bootup();
-      Conv.pause(1100);
-    }
-    DIP4bounce = true;
-  }
-  else {
-    DIP4bounce = false;
-  }
 }
 
 void printStatsSerial(){

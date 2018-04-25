@@ -6,7 +6,7 @@
 #include "Metro.h"
 
 uint32_t startTime;
-double desPowerIn = 30;
+double desPowerIn = 70;
 
 FCController FC = FCController();
 Supercaps SC = Supercaps();
@@ -18,6 +18,7 @@ StatsManager Stats = StatsManager(&Conv.shortCircuit,&FC.temp,
                       &SC.voltage,&SC.current,&SC.power);
 
 Metro watchdogTimer = Metro(10);
+Metro lapPurgeTimer = Metro(210000);
 
 void setup() {// board setting vars
   // put your setup code here, to run once:
@@ -28,7 +29,7 @@ void setup() {// board setting vars
   Serial.begin(115200);
   Serial.println("Beginning setup");
   
-  FC.enabled = false;
+  FC.enabled = true;
   SC.enabled = true;
   Conv.enabled = true;
   FC.purgeEnabled = false;
@@ -83,6 +84,12 @@ void loop() {
 
   if (watchdogTimer.check()){
     kickDog();
+  }
+  
+  if(lapPurgeTimer.check()){
+    FC.bootup();
+    Conv.pause(1100);
+    lapPurgeTimer.reset();
   }
 }
 

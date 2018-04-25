@@ -35,7 +35,7 @@ void FCController::doSafetyChecks(bool shortCircuit,double* setpointPower){
     emergencyPause();
   }
   if ((voltage<12) && (voltage!=0) && (!shortCircuit)) {
-    *setpointPower = max(*setpointPower*.99999*(voltage-11)/1,10);
+    *setpointPower = max(*setpointPower-(voltage-11)/1,10);
   }
   if (((voltage<11) && (voltage!=0) && (!shortCircuit)) || (voltage>20)){
     sprintf(errorMsg,"%sFC voltage out of range... "
@@ -50,6 +50,9 @@ void FCController::doSafetyChecks(bool shortCircuit,double* setpointPower){
     errorDisp = true;
     allGood = false;
     emergencyShutdown();
+  }
+  if ((-2/3*(current-2.5)-14.75)<1){ // 1V below curve
+//    aoeu
   }
   digitalWriteFast(LED1,allGood);
 }
@@ -67,7 +70,7 @@ void FCController::bootup(){
 void FCController::postStartup(){
   digitalWrite(PURGE,LOW);
   requestShort = true;
-  shortDuration = 200;
+  shortDuration = 50;
   // analogWrite(FAN,fanPrct*MAXPWM); // this will automatically update
   // purgeTimer.reset(); // whatever
 }

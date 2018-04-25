@@ -1,6 +1,7 @@
 #include "Supercaps.h"
 
 #include "PinAssignments.h"
+#include "Constants.h"
 
 Supercaps::Supercaps(){
 	// Serial.println("Initializing Supercaps...");
@@ -17,7 +18,10 @@ void Supercaps::doSafetyChecks(double* setpointPower){
 		errorDisp = true;
 		allGood = false;
     fault = false; // definitely don't make this true - this is needed to keep the converter on while it recharges the supercaps
-		*setpointPower=min(*setpointPower*1.005,100); // pseudocode
+		*setpointPower=min(*setpointPower+(34.1-voltage)*.01,MAXDESPOWER); // pseudocode
+//    if (*setpointPower > 100){
+//      *setpointPower = 100;
+//  	}
 	}
 	else if (voltage>40.5){
 		sprintf(errorMsg,"Supercaps over voltage... "

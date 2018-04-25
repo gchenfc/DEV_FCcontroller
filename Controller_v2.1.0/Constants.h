@@ -21,6 +21,8 @@
 #define Ki KiPower
 #define Kd KdPower
 
+#define MAXDESPOWER 100
+
 // FC thermistor divider
 #define TEMP_RES 1200
 // 12V voltage divider
@@ -32,6 +34,8 @@
 #define SC_HOLD 2
 #define SC_RAMPDOWN 3
 #define SC_RECOV 4
+
+#define DIP_PULLUP 0
 
 #endif
 

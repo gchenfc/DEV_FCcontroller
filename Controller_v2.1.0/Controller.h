@@ -58,7 +58,7 @@ class FCController{
 		Metro pausedTimer = Metro(3000);
 
 		// FC control vars
-		double fanPrct = .40;
+		double fanPrct = .80;
 		double purgePrct = 0.0;
 		bool supplyPrct = 1;
 

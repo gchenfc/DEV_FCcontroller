@@ -62,8 +62,10 @@ double readTemp(){
   if (prct > .95){
     return 0;
   }
-  return 20 + (((1-prct)/prct*TEMP_RES)-1076)/3.8;
+//  return 20 + ((prct/(1-prct)*TEMP_RES)-1076)/3.8;
+  return 20;
 }
+
 double tempCtoF(double tempC){
   return tempC*9/5 + 32;
 }
