@@ -65,6 +65,7 @@ Metro parseSerialTimer = Metro(100);
 // serial
 char buf[10];
 int bufInd = 0;
+bool pollMode = false;
 
 Metro resetButtonTimer = Metro(1000);
 bool resetButtonRecent = false;
@@ -143,9 +144,9 @@ void Comm_update(){
     else if (SC.fault || !SC.allGood){
       tone(BUZZ,2000);
     }
-    else if (!Conv.enabled || !Conv.enabled){
-      tone(BUZZ,3000);
-    }
+//    else if (!Conv.enabled || !Conv.enabled){
+//      tone(BUZZ,3000);
+//    }
     else{
       noTone(BUZZ);
     }
@@ -259,6 +260,9 @@ void printStatsSerial(){
 	//  Serial.print('\t');
 	//  Serial.println(dutyCycle*100,3);
   // normal data transmition
+  if (pollMode){
+    return;
+  }
   Serial.print((millis()-startTime)/1000.0,3);
   Serial.print("s\t");
   Serial.print(FC.voltage,2);
@@ -370,6 +374,7 @@ void parseSerial(){
           break;
         }
         Conv.CCM = true;
+        Serial.println("Going into CCM");
 //        Conv.initializeDC();
 				// dutyCycle = 1-FCvoltage/SCvoltage;
 				// setDC(dutyCycle);
@@ -378,6 +383,12 @@ void parseSerial(){
         Conv.CCM = false;
         Conv.initializeDC();
         break;
+      case '(':
+        pollMode = false; // to allow print
+        printStatsSerial();
+        pollMode = true;
+      case ')':
+        pollMode = false;
     }
   }
 }

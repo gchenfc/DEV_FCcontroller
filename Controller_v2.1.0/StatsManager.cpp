@@ -16,7 +16,7 @@ StatsManager::StatsManager(bool* shortCircuit, double* FCtemp,
 }
 void StatsManager::initializeStats(){
   Wire.begin(I2C_MASTER, 0x00, I2C_PINS_16_17, I2C_PULLUP_EXT, 400000);
-  INAinit();
+//  INAinit();
 
   *FCvoltage = readFCvoltage();
   *FCcurrent = readFCcurrent();
@@ -27,7 +27,7 @@ void StatsManager::initializeStats(){
 }
 void StatsManager::updateStats(){
   *FCvoltage = LPF(*FCvoltage,readFCvoltage(),.95); //LPF(*FCvoltage,readFCvoltage(),.99);
-  *FCcurrent = LPF(*FCcurrent,readFCcurrent(),.95); //LPF(*FCcurrent,readFCcurrent(),.99);
+  *FCcurrent = LPF(*FCcurrent,readFCcurrent(),.99); //LPF(*FCcurrent,readFCcurrent(),.99);
   *SCvoltage = LPF(*SCvoltage,readSCvoltage(),.95); //LPF(*SCvoltage, readSCvoltage(), .99); // smooth/filter
   *SCcurrent = LPF(*SCcurrent,readSCcurrent(),.95); //LPF(*SCcurrent, readSCcurrent(), .99);
   *FCpower = LPF(*FCpower,(*FCvoltage)*(*FCcurrent),.9); //LPF(FCpower,FCvoltage*FCcurrent,.9);

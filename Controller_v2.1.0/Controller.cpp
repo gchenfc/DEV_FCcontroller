@@ -8,6 +8,9 @@ void postStartup();
 void postShutdown();
 bool startingUp = false;
 
+const double FCController::shortCircuitStartupIntervals[6] = {0, 616, 616, 616, 313, 313};
+const double FCController::shortCircuitStartupDurations[6] = {50, 50, 50, 50, 100, 50};
+
 FCController::FCController(){
   // digitalWriteFast(LED4,HIGH);
   // pinMode(LFET,OUTPUT);

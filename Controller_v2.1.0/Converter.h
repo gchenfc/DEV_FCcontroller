@@ -71,7 +71,7 @@ class Converter{
 
 		// converter control timers
 		Metro updateDCTimer = Metro(1);
-		Metro disableTimer = Metro(1000);
+		Metro disableTimer = Metro(100000000);
 		Metro statsLagTimer = Metro(100);
 		Metro stable12VTimer = Metro(100);
 

@@ -16,6 +16,10 @@
 
 class FCController{
 	public:
+ 
+    static const double shortCircuitStartupIntervals[6];
+    static const double shortCircuitStartupDurations[6];
+    
 		FCController();
 		void doSafetyChecks(bool shortCircuit,double* setpointPower);
 		void bootup();
@@ -58,7 +62,7 @@ class FCController{
 		Metro pausedTimer = Metro(3000);
 
 		// FC control vars
-		double fanPrct = .80;
+		double fanPrct = .4;
 		double purgePrct = 0.0;
 		bool supplyPrct = 1;
 

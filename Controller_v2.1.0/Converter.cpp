@@ -169,6 +169,9 @@ void Converter::doSafetyChecks(){
 
 // converter management
 void Converter::pause(uint32_t duration){
+  if (!enabled){
+    return;
+  }
 	if (duration == 0){
 		setpointPower = 0;
 		duration = 0xffffffff;
@@ -205,8 +208,11 @@ void Converter::initializeDC(){
 	// digitalWriteFast(LED4,HIGH);
 	pinMode(LFET,OUTPUT);
 	digitalWriteFast(LFET,HIGH);
+//  pinMode(HFET,OUTPUT);
+//  digitalWriteFast(HFET,LOW);
 	analogWriteResolution(PWM_RES);
 	analogWriteFrequency(LFET,PWM_FREQ);
+//  analogWriteFrequency(HFET,PWM_FREQ);
 	// 	FTM1_POL = 0;                  // Positive Polarity 
 	// 	FTM1_OUTMASK = 0xFF;           // Use mask to disable outputs
 	// 	FTM1_SC = 0x08;                // set system clock as source for FTM0
@@ -255,9 +261,11 @@ void Converter::setDC(double DC){
 	analogWrite(LFET,(1-DC)*MAXPWM);
 	if (CCM){
 		analogWrite(HFET,(1-DC)*MAXPWM);
+//    analogWrite(HFET,.1*MAXPWM);
 	}
 	else{
-		digitalWriteFast(HFET,LOW);
+    analogWrite(HFET,0);
+//		digitalWriteFast(HFET,LOW);
 	}
 }
 void Converter::setDC(){
@@ -270,25 +278,24 @@ void Converter::update(){
 		check12V();
 	}
 
+  if(shortCircuitEnabled){
+    if(shortCircuitTimer.check()){
+      startShortCircuit();
+    }
+  }
+  if(shortCircuit){
+    updateSC();
+  }
+  
 	if (!enabled){
 		if (disableTimer.check()){
 			resume();
 		}
-		else{
+		else if (!shortCircuit){
 			dutyCycle = 0;
 			setDC(dutyCycle);
-			return;
 		}
 	}
-
-	if(shortCircuitEnabled){
-		if(shortCircuitTimer.check()){
-			startShortCircuit();
-		}
-	}
-  if(shortCircuit){
-    updateSC();
-  }
 	
   // DCM criteria: K<Kcrit (then DCM occurs)
   K = 2*33e-6/((*SCvoltage)/(*SCcurrent)/PWM_FREQ);
@@ -301,7 +308,7 @@ void Converter::update(){
     setDC(dutyCycle);
   }
   
-  if (((updateDCTimer.check()) && (!shortCircuit)) || (shortCircuitStatus==SC_RECOV)){
+  if (enabled && (((updateDCTimer.check()) && (!shortCircuit)) || (shortCircuitStatus==SC_RECOV))){
   	error = setpointPower - (*FCpower);
   	pid.update();
   	updateSetpoint();
@@ -317,7 +324,7 @@ void Converter::update(){
   		errorM2 += delta*delta2;
   	}
 
-//    dutyCycle = .6;
+    dutyCycle = .5;
     setDC(dutyCycle);
   }
 }
