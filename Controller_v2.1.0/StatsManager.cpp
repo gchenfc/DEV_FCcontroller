@@ -63,7 +63,7 @@ double readTemp(){
   if (prct > .95){
     return 0;
   }
-//  return 20 + ((prct/(1-prct)*TEMP_RES)-1076)/3.8;
+ return 20 + ((prct/(1-prct)*TEMP_RES)-1076)/3.8;
   return 20;
 }
 

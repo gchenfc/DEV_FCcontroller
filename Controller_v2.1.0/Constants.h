@@ -1,6 +1,12 @@
 #ifndef Constants_h
 #define Constants_h
 
+// FC control stuff
+#define PURGE_INTERVAL 30000
+#define SHORT_INTERVAL 30000
+#define PURGE_DURATION 20
+#define SHORT_DURATION 10
+
 // technical PWM stuff
 #define TPM_C 48000000            // core clock, for calculation only
 #define PWM_FREQ 100000            //  PWM frequency [Hz]

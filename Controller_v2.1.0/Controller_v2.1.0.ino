@@ -17,10 +17,14 @@ StatsManager Stats = StatsManager(&Conv.shortCircuit,&FC.temp,
                       &FC.voltage,&FC.current,&FC.power,
                       &SC.voltage,&SC.current,&SC.power);
 
-Metro watchdogTimer = Metro(10);
+Metro watchdogTimer = Metro(20);
 Metro lapPurgeTimer = Metro(210000);
 
+bool aliveLED;
+
 void setup() {// board setting vars
+  digitalWrite(LFET, HIGH);
+
   setupWatchdog();
   
   delay(100);
@@ -34,7 +38,7 @@ void setup() {// board setting vars
   SC.enabled = true;
   Conv.enabled = true;
   FC.purgeEnabled = true;
-  Conv.shortCircuitEnabled = false;
+  Conv.shortCircuitEnabled = true;
 
   Stats.initializeStats();
   Comm_setup();
@@ -43,7 +47,7 @@ void setup() {// board setting vars
   Conv.setDC();
   if (FC.enabled){
     FC.bootup();
-    Conv.pause(1100);
+    Conv.pause(5500+500); // 500ms buffer time
   }
   analogWriteResolution(PWM_RES);
   analogWriteFrequency(FAN, 20000);
@@ -115,7 +119,8 @@ void kickDog()
     #error // watchdog not configured - comment out this line if you are ok with no watchdog
   #endif
 
-  digitalWriteFast(LED4,!digitalReadFast(LED4));
+  digitalWriteFast(LED4, aliveLED);
+  aliveLED = !aliveLED;
 }
 
 #if defined(__MKL26Z64__)

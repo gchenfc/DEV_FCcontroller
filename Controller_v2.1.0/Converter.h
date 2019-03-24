@@ -54,8 +54,8 @@ class Converter{
 		bool shortCircuit = false;
 
 		bool shortCircuitEnabled = false;
-		Metro shortCircuitTimer = Metro(10000);
-		Metro shortCircuitEndTimer = Metro(10);
+		Metro shortCircuitTimer = Metro(SHORT_INTERVAL);
+		Metro shortCircuitEndTimer = Metro(SHORT_DURATION);
 		Metro shortCircuitRecovTimer = Metro(100);
     uint8_t shortCircuitStatus = SC_OFF;
     uint32_t shortCircuitDuration = 0;

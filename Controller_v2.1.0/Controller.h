@@ -16,9 +16,21 @@
 
 class FCController{
 	public:
- 
-    static const double shortCircuitStartupIntervals[6];
-    static const double shortCircuitStartupDurations[6];
+
+	    static const double shortCircuitStartupIntervals[6];
+	    static const double shortCircuitStartupDurations[6];
+
+		enum STARTUP_STATE {
+			STARTUP_DONE=0,
+			STARTUP_PURGE,
+			STARTUP_POSTPURGE,
+			STARTUP_SHORT1,
+			STARTUP_SHORT2,
+			STARTUP_SHORT3,
+			STARTUP_SHORT4,
+			STARTUP_SHORT5,
+			STARTUP_FANACCEL
+		};
     
 		FCController();
 		void doSafetyChecks(bool shortCircuit,double* setpointPower);
@@ -27,6 +39,7 @@ class FCController{
 		void shutdown();
 		void emergencyPause();
 		void emergencyShutdown();
+		void startPurge();
 		void update();
 
 		bool enabled;
@@ -34,7 +47,7 @@ class FCController{
     bool requestShort;
     uint32_t shortDuration;
 
-		bool startingUp = false;
+		FCController::STARTUP_STATE startingUp;
 		bool shuttingDown = false;
 
 		double voltage = 0.0;
@@ -54,8 +67,8 @@ class FCController{
 	private:
 
 		// FC control timers
-		Metro purgeTimer = Metro(10000);
-		Metro purgeEndTimer = Metro(20);
+		Metro purgeTimer = Metro(PURGE_INTERVAL);
+		Metro purgeEndTimer = Metro(PURGE_DURATION);
 		Metro fanUpdateTimer = Metro(500);
 		Metro postStartupTimer = Metro(1000);
 		Metro postShutdownTimer = Metro(1000);

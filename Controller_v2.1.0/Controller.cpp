@@ -8,7 +8,7 @@ void postStartup();
 void postShutdown();
 bool startingUp = false;
 
-const double FCController::shortCircuitStartupIntervals[6] = {0, 616, 616, 616, 313, 313};
+const double FCController::shortCircuitStartupIntervals[6] = {1, 616, 616, 616, 313, 313};
 const double FCController::shortCircuitStartupDurations[6] = {50, 50, 50, 50, 100, 50};
 
 FCController::FCController(){
@@ -64,16 +64,71 @@ void FCController::doSafetyChecks(bool shortCircuit,double* setpointPower){
 void FCController::bootup(){
   enabled = true;
   Serial.println("Booting up Fuel Cell");
-  analogWrite(FAN,.8*MAXPWM);
-  digitalWrite(PURGE,HIGH);
+  // analogWrite(FAN,.8*MAXPWM);
   digitalWrite(SUPPLY,HIGH);
-  startingUp = true;
+  purgeTimer.reset();
+
+  digitalWrite(PURGE,HIGH);
+  postStartupTimer.interval(3000);
   postStartupTimer.reset();
+  startingUp = FCController::STARTUP_STATE::STARTUP_PURGE;
 }
 void FCController::postStartup(){
-  digitalWrite(PURGE,LOW);
-  requestShort = true;
-  shortDuration = 50;
+  switch (startingUp) {
+    case STARTUP_DONE:
+      postStartupTimer.interval(999999);
+      break;
+    case STARTUP_PURGE:
+      digitalWrite(PURGE,LOW);
+      requestShort = true;
+      shortDuration = shortCircuitStartupDurations[0];
+      postStartupTimer.interval(shortCircuitStartupIntervals[0]);
+      postStartupTimer.reset();
+      startingUp = STARTUP_POSTPURGE;
+      break;
+    case STARTUP_POSTPURGE:
+      requestShort = true;
+      shortDuration = shortCircuitStartupDurations[1];
+      postStartupTimer.interval(shortCircuitStartupIntervals[1]);
+      postStartupTimer.reset();
+      startingUp = STARTUP_SHORT1;
+      break;
+    case STARTUP_SHORT1:
+      requestShort = true;
+      shortDuration = shortCircuitStartupDurations[2];
+      postStartupTimer.interval(shortCircuitStartupIntervals[2]);
+      postStartupTimer.reset();
+      startingUp = STARTUP_SHORT2;
+      break;
+    case STARTUP_SHORT2:
+      requestShort = true;
+      shortDuration = shortCircuitStartupDurations[3];
+      postStartupTimer.interval(shortCircuitStartupIntervals[3]);
+      postStartupTimer.reset();
+      startingUp = STARTUP_SHORT3;
+      break;
+    case STARTUP_SHORT3:
+      requestShort = true;
+      shortDuration = shortCircuitStartupDurations[4];
+      postStartupTimer.interval(shortCircuitStartupIntervals[4]);
+      postStartupTimer.reset();
+      startingUp = STARTUP_SHORT4;
+      break;
+    case STARTUP_SHORT4:
+      requestShort = true;
+      shortDuration = shortCircuitStartupDurations[5];
+      postStartupTimer.interval(shortCircuitStartupIntervals[5]);
+      postStartupTimer.reset();
+      startingUp = STARTUP_FANACCEL;
+      break;
+    case STARTUP_FANACCEL:
+      analogWrite(FAN, 0.8*MAXPWM);
+      purgeTimer.interval(PURGE_INTERVAL/2); // to offset purge and short
+      startingUp = STARTUP_DONE;
+      postStartupTimer.interval(10);
+      postStartupTimer.reset();
+      break;
+  }
   // analogWrite(FAN,fanPrct*MAXPWM); // this will automatically update
   // purgeTimer.reset(); // whatever
 }
@@ -103,10 +158,16 @@ void FCController::emergencyShutdown(){
   faultDuration = 0;
   shutdown();
 }
+void FCController::startPurge(){
+  if (!purgeEnabled){
+    return;
+  }
+  digitalWrite(PURGE,HIGH);
+  purgeEndTimer.reset();
+}
 void FCController::update(){
   if (startingUp && postStartupTimer.check()){
     postStartup();
-    startingUp = false;
   }
   if (shuttingDown && postShutdownTimer.check()){
     postShutdown();
@@ -117,10 +178,10 @@ void FCController::update(){
     return;
   }
 
-  if (purgeEnabled){
+  if (purgeEnabled && !startingUp){
     if(purgeTimer.check()){
-      digitalWrite(PURGE,HIGH);
-      purgeEndTimer.reset();
+      startPurge();
+      purgeTimer.interval(PURGE_INTERVAL); // to reset the interval after startup offset "hack"
     }
     if(purgeEndTimer.check()){
       digitalWrite(PURGE,LOW);

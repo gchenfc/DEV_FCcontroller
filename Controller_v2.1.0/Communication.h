@@ -313,6 +313,7 @@ void printStatsSerial(){
 }
 void parseSerial(){
   float lim = 0;
+  bool tmp;
   if (Serial.available()){
     char c = Serial.read();
     switch(c){
@@ -326,12 +327,21 @@ void parseSerial(){
       case 'b':
         FC.bootup();
         Conv.resume();
-        Conv.pause(1100);
+        Conv.pause(5500+500); // 500ms buffer time
         break;
       case 'r':
+        tmp = Conv.shortCircuitEnabled;
+        Conv.shortCircuitEnabled = true;
         Conv.startShortCircuit();
+        Conv.shortCircuitEnabled = tmp;
+        break;
+      case 'R':
+        Conv.shortCircuitEnabled = !Conv.shortCircuitEnabled;
         break;
       case 'u':
+        FC.startPurge();
+        break;
+      case 'U':
         FC.purgeEnabled = !FC.purgeEnabled;
         break;
       case 'F':
