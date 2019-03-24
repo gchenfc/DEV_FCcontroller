@@ -29,11 +29,11 @@ Converter::Converter(uint32_t* startTime, double* desPowerIn,
 }
 
 void Converter::doSafetyChecks(){
-  allGood =true;
-  if ((true) && (*SCvoltage < 33)){ // hack - restructure this code later
+	allGood =true;
+	if ((true) && (*SCvoltage < 33)){ // hack - restructure this code later
 //    setpointPower += .05;
 //    setpointPower = min(setpointPower,100);
-  }
+	}
 	if ((*FCcurrent>13) && (!shortCircuit)){
 		Serial.print("Too much input current - converter pausing... ");
 		Serial.print(*FCcurrent,3);
@@ -77,7 +77,7 @@ void Converter::doSafetyChecks(){
 		allGood = false;
 		pause();
 	}
-	if (*SCvoltage>40){
+	if (*SCvoltage>35){
 		Serial.print("Too much output voltage - converter pausing... ");
 		Serial.print(*SCvoltage,3);
 		Serial.println("V");
@@ -115,8 +115,8 @@ void Converter::doSafetyChecks(){
 				sprintf(errorMsg,"%sDCM error - switching to DCM\n",errorMsg);
 				errorDisp = true;
 
-		    CCM = false;
-		    initializeDC();
+				CCM = false;
+				initializeDC();
 			}
 			sprintf(errorMsg,"%sSuspected DCM control error: resuming...\n",errorMsg);
 			errorDisp = false;
@@ -138,8 +138,8 @@ void Converter::doSafetyChecks(){
 				if (abs(*SCvoltage/ *FCvoltage - predictedM()) > (.15*expectedLossPrct)){
 					sprintf(errorMsg,"%sUnknown error - not pausing operation\n",errorMsg);
 					errorDisp = true;
-          statsLag = true;
-          statsLagTimer.reset();
+					statsLag = true;
+					statsLagTimer.reset();
 //          pid.reset();
 //          setpointPower = 10;
 //					pause();
@@ -169,16 +169,16 @@ void Converter::doSafetyChecks(){
 
 // converter management
 void Converter::pause(uint32_t duration){
-  if (!enabled){
-    return;
-  }
+	if (!enabled){
+		return;
+	}
 	if (duration == 0){
 		setpointPower = 0;
 		duration = 0xffffffff;
 	}
 	dutyCycle = 0;
-  digitalWrite(HFET,0);
-  digitalWrite(LFET,HIGH); // inverted
+	digitalWrite(HFET,0);
+	digitalWrite(LFET,HIGH); // inverted
 	// setDC(dutyCycle);
 	enabled = false;
 	disableTimer.interval(duration);
@@ -200,6 +200,7 @@ void Converter::resume(){
 	setpointPower = (*FCpower);
 	disableTimer.interval(10000000);
 	disableTimer.reset();
+	pid.reset();
 
 	initializeDC();
 }
@@ -264,7 +265,7 @@ void Converter::setDC(double DC){
 //    analogWrite(HFET,.1*MAXPWM);
 	}
 	else{
-    analogWrite(HFET,0);
+		analogWrite(HFET,0);
 //		digitalWriteFast(HFET,LOW);
 	}
 }
@@ -278,15 +279,15 @@ void Converter::update(){
 		check12V();
 	}
 
-  if(shortCircuitEnabled){
-    if(shortCircuitTimer.check()){
-      startShortCircuit();
-    }
-  }
-  if(shortCircuit){
-    updateSC();
-  }
-  
+	if(shortCircuitEnabled){
+		if(shortCircuitTimer.check()){
+			startShortCircuit();
+		}
+	}
+	if(shortCircuit){
+		updateSC();
+	}
+	
 	if (!enabled){
 		if (disableTimer.check()){
 			resume();
@@ -297,36 +298,36 @@ void Converter::update(){
 		}
 	}
 	
-  // DCM criteria: K<Kcrit (then DCM occurs)
-  K = 2*33e-6/((*SCvoltage)/(*SCcurrent)/PWM_FREQ);
-  Kcrit = dutyCycle*(1-dutyCycle)*(1-dutyCycle);
-  if (CCM && (K<Kcrit)){
-    sprintf(errorMsg,"DCM criteria detected - switching to DCM...\n");
-    errorDisp = true;
-    CCM = false;
-    initializeDC();
-    setDC(dutyCycle);
-  }
-  
-  if (enabled && (((updateDCTimer.check()) && (!shortCircuit)) || (shortCircuitStatus==SC_RECOV))){
-  	error = setpointPower - (*FCpower);
-  	pid.update();
-  	updateSetpoint();
-  
-  	//  dutyCycle = dutyCycleBase+dutyCycleAdj;
-  	
-  	// error stats
-  	if((millis()-(*startTime))>5000){
-  		errorCount += 1;
-  		float delta = error-errorMean;
-  		errorMean += delta/errorCount;
-  		float delta2 = error-errorMean;
-  		errorM2 += delta*delta2;
-  	}
+	// DCM criteria: K<Kcrit (then DCM occurs)
+	K = 2*33e-6/((*SCvoltage)/(*SCcurrent)/PWM_FREQ);
+	Kcrit = dutyCycle*(1-dutyCycle)*(1-dutyCycle);
+	if (CCM && (K<Kcrit)){
+		sprintf(errorMsg,"DCM criteria detected - switching to DCM...\n");
+		errorDisp = true;
+		CCM = false;
+		initializeDC();
+		setDC(dutyCycle);
+	}
+	
+	if (enabled && (((updateDCTimer.check()) && (!shortCircuit)) || (shortCircuitStatus==SC_RECOV))){
+		error = setpointPower - (*FCpower);
+		pid.update();
+		updateSetpoint();
+	
+		//  dutyCycle = dutyCycleBase+dutyCycleAdj;
+		
+		// error stats
+		if((millis()-(*startTime))>5000){
+			errorCount += 1;
+			float delta = error-errorMean;
+			errorMean += delta/errorCount;
+			float delta2 = error-errorMean;
+			errorM2 += delta*delta2;
+		}
 
-    dutyCycle = .5;
-    setDC(dutyCycle);
-  }
+		// dutyCycle = .5;
+		setDC(dutyCycle);
+	}
 }
 void Converter::updateSetpoint(){
 	if (statsLag){
@@ -341,9 +342,9 @@ void Converter::updateSetpoint(){
 		setpointPower = setpointPower + ((*desPowerIn)-setpointPower)*1*min(deltaT,.1);
 	}
 
-  if ((setpointPower<desPowerInLowerLimit) && (*desPowerIn<desPowerInLowerLimit) && (*SCvoltage<39)){
-    *desPowerIn = desPowerInLowerLimit;
-  }
+	if ((setpointPower<desPowerInLowerLimit) && (*desPowerIn<desPowerInLowerLimit) && (*SCvoltage<39)){
+		*desPowerIn = desPowerInLowerLimit;
+	}
 	// if (abs(error)<1){1
 	// dutyCycleBase = LPF(
 	//  dutyCycleBase,
@@ -379,76 +380,83 @@ void Converter::testingCycleDC(){
 	}
 }
 double Converter::predictedM(){
-  return predictedM(dutyCycle);
+	return predictedM(dutyCycle);
 }
 double Converter::predictedM(double D){
-  if (K<Kcrit){ // DCM
-    return (1+sqrt(1+4*D*D/K))/2;
-  }
-  else{
-    return 1/(1-D);
-  }
+	if (K<Kcrit){ // DCM
+		return (1+sqrt(1+4*D*D/K))/2;
+	}
+	else{
+		return 1/(1-D);
+	}
 }
 double Converter::predictedD(){
-  return predictedD((*SCvoltage)/(*FCvoltage));
+	return predictedD((*SCvoltage)/(*FCvoltage));
 }
 double Converter::predictedD(double M){
-  if (K<Kcrit){ // DCM
-    return sqrt(((2*M-1)*(2*M-1)-1)/4*K);
-  }
-  else{
-    return 1-1/M;
-  }
+	if (K<Kcrit){ // DCM
+		return sqrt(((2*M-1)*(2*M-1)-1)/4*K);
+	}
+	else{
+		return 1-1/M;
+	}
 }
 
 void Converter::startShortCircuit(){ // not blocking :)
-  startShortCircuit(10);
+	startShortCircuit(10);
 }
 void Converter::startShortCircuit(uint32_t duration){ // not blocking :)
-  shortCircuit = true;
-  shortCircuitDuration = duration;
-  shortCircuitStatus = SC_RAMPUP;
-  shortCircuitRefTime = micros();
+	if (!shortCircuitEnabled){
+		return;
+	}
+	shortCircuit = true;
+	shortCircuitDuration = duration;
+	shortCircuitStatus = SC_RAMPUP;
+	shortCircuitRefTime = micros();
 }
 void Converter::updateSC(){
-  switch(shortCircuitStatus){
-    case SC_OFF:
-      shortCircuit = false;
-      break;
-    case SC_RAMPUP:
-      if (dutyCycle>.99){
-        dutyCycle = 1;
-        shortCircuitStatus = SC_HOLD;
-        shortCircuitEndTimer.interval(shortCircuitDuration);
-        shortCircuitEndTimer.reset();
-      }
-      dutyCycle = min(1,dutyCycle+1.0*(micros()-shortCircuitRefTime)/1e6);
-      break;
-    case SC_HOLD:
-      dutyCycle = 1;
-      if (shortCircuitEndTimer.check()){
-        shortCircuitStatus = SC_RAMPDOWN;
-      }
-      break;
-    case SC_RAMPDOWN:
-      if (dutyCycle<.76){
-        shortCircuitStatus = SC_RECOV;
-        shortCircuitRecovTimer.reset();
-      }
-      dutyCycle = max(.75,dutyCycle-1.0*(micros()-shortCircuitRefTime)/1e6);
-      break;
-    case SC_RECOV:
-      if(shortCircuitRecovTimer.check()){
-        shortCircuit=false;
-        shortCircuitStatus = SC_OFF;
-      }
-      break;
-  }
-  setDC(dutyCycle);
+	uint32_t t_now = micros();
+	switch(shortCircuitStatus){
+		case SC_OFF:
+			shortCircuit = false;
+			break;
+		case SC_RAMPUP: // linearly ramp up duty cycle
+			if (dutyCycle>.99){
+				dutyCycle = 1;
+				shortCircuitStatus = SC_HOLD;
+				shortCircuitEndTimer.interval(shortCircuitDuration);
+				shortCircuitEndTimer.reset();
+			}
+			dutyCycle = min(1,dutyCycle+50.0*(t_now-shortCircuitRefTime)/1e6);
+			break;
+		case SC_HOLD: // hold at 100%
+			dutyCycle = 1;
+			if (shortCircuitEndTimer.check()){
+				shortCircuitStatus = SC_RAMPDOWN;
+			}
+			break;
+		case SC_RAMPDOWN: // linearly ramp down duty cycle
+			if (dutyCycle<.76){
+				shortCircuitStatus = SC_RECOV;
+				shortCircuitRecovTimer.reset();
+				dutyCycle = 0; // supposedly another thread should take over DC at this point
+			} else {
+				dutyCycle = max(.75,dutyCycle-50.0*(t_now-shortCircuitRefTime)/1e6);
+			}
+			break;
+		case SC_RECOV: // idk what this is for
+			if(shortCircuitRecovTimer.check()){
+				shortCircuit=false;
+				shortCircuitStatus = SC_OFF;
+			}
+			break;
+	}
+	setDC(dutyCycle);
+	shortCircuitRefTime = t_now;
 }
 double Converter::check12V(){
-//	stable12V = LPF(stable12V,analogRead(STABLE12V)*3.0/1024*STABLE12_MULT * 12.23/13.15,.8);
+//	stable12V = LPF(stable12V,analogRead(STABLE12V)*3.0/4096*STABLE12_MULT * 12.23/13.15,.8);
 //	return stable12V;
-  stable12V = 12;
-  return 12;
+	stable12V = 12;
+	return 12;
 }

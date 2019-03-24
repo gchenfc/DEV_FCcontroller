@@ -95,11 +95,11 @@ Metro DIPcheckTimer = Metro(50);
 bool DIP1bounce,DIP2bounce,DIP3bounce,DIP4bounce;
 
 void Comm_setup(){
-  Wire1.begin(I2C_SLAVE, I2Caddress, I2C_PINS_29_30, I2C_PULLUP_EXT, I2Cspeed);
-  pinMode(18,INPUT);
-  pinMode(19,INPUT);
-  Wire1.onReceive(i2cReceiveEvent);
-  Wire1.onRequest(i2cRequestEvent);
+  // Wire1.begin(I2C_SLAVE, I2Caddress, I2C_PINS_29_30, I2C_PULLUP_EXT, I2Cspeed);
+  // pinMode(18,INPUT);
+  // pinMode(19,INPUT);
+  // Wire1.onReceive(i2cReceiveEvent);
+  // Wire1.onRequest(i2cRequestEvent);
 
   i2cDoCMD = false;
   i2cCMDerror = false;
@@ -325,6 +325,7 @@ void parseSerial(){
         break;
       case 'b':
         FC.bootup();
+        Conv.resume();
         Conv.pause(1100);
         break;
       case 'r':

@@ -40,7 +40,7 @@ void FCController::doSafetyChecks(bool shortCircuit,double* setpointPower){
   if ((voltage<12) && (voltage!=0) && (!shortCircuit)) {
     *setpointPower = max(*setpointPower-(voltage-11)/1,10);
   }
-  if (((voltage<11) && (voltage!=0) && (!shortCircuit)) || (voltage>20)){
+  if (((voltage<11) && (voltage!=0) && (!(shortCircuit || requestShort))) || (voltage>20)){
     sprintf(errorMsg,"%sFC voltage out of range... "
       "%.3fV\n",errorMsg,voltage);
     errorDisp = true;

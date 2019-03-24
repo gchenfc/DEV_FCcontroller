@@ -1,6 +1,9 @@
 #ifndef PinAssignments_h
 #define PinAssignments_h
 
+#define RSHUNT_FC 0.002
+#define RSHUNT_SC 0.0125
+
 #define LFETold 9
 #define LFET 4  // don't change this - it's set to FTM1C1
 #define HFET 3  // don't change this - it's set to FTM1C0

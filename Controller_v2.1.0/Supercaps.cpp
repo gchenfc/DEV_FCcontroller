@@ -12,13 +12,13 @@ void Supercaps::doSafetyChecks(double* setpointPower){
 		digitalWriteFast(LED3,LOW);
 		return;
 	}
-	if (voltage<33){
+	if (voltage<25){
 		sprintf(errorMsg,"Supercaps under voltage... "
 			"%.3fV\n",voltage);
 		errorDisp = true;
 		allGood = false;
     fault = false; // definitely don't make this true - this is needed to keep the converter on while it recharges the supercaps
-		*setpointPower=min(*setpointPower+(34.1-voltage)*.01,MAXDESPOWER); // pseudocode
+		*setpointPower=min(*setpointPower+(26.1-voltage)*.1,MAXDESPOWER); // pseudocode
 //    if (*setpointPower > 100){
 //      *setpointPower = 100;
 //  	}

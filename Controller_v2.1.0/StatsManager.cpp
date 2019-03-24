@@ -1,4 +1,5 @@
 #include "StatsManager.h"
+#include "PinAssignments.h"
 #include <i2c_t3.h>
 
 StatsManager::StatsManager(bool* shortCircuit, double* FCtemp,
@@ -43,22 +44,22 @@ double LPF(double oldVal, double newVal, double alpha){
   return oldVal*alpha + newVal*(1-alpha);
 }
 double readSCvoltage(){
-  return analogRead(VCAP)*(3.0/1023)*(210/10); //voltage divider - 10k and 200k
+  return analogRead(VCAP)*(3.0/4096)*(210/10) * 1.4272/1.4240; //voltage divider - 10k and 200k
   // 0.0428V calibrated
 }
 double readSCcurrent(){
-  return analogRead(ICAP)*(3.0/1023)/20/0.01; //INA168 gain is 20 - shunt resistor is 10mO
+  return analogRead(ICAP)*(3.0/4096)/20/RSHUNT_SC; //INA168 gain is 20 - shunt resistor is 10mO
 }
 double readFCcurrent(){
   int16_t raw = INAreadReg(0x01) ; //deliberate bad cast! the register is stored as two's complement
-  return raw * 0.0000025 / 0.001 * .805/.837 * 0.577/0.58;// * 0.81344 + 0.00216; //2.5uV lsb and 10mOhm resistor *fudged*
+  return raw * 0.0000025 / RSHUNT_FC * .805/.837 * 0.577/0.58;// * 0.81344 + 0.00216; //2.5uV lsb and 10mOhm resistor *fudged*
 }
 double readFCvoltage(){
   uint16_t raw = INAreadReg(0x02);
   return raw * 0.00125 * 0.9998 * 17.78/17.73 * 17.5/17.55; //multiply by 1.25mV LSB
 }
 double readTemp(){
-  double prct = analogRead(TEMP)/1024.0;
+  double prct = analogRead(TEMP)/4096.0;
   if (prct > .95){
     return 0;
   }

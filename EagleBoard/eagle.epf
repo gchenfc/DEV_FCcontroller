@@ -1,5 +1,5 @@
 [Eagle]
-Version="08 03 02"
+Version="09 01 01"
 Platform="Mac OS X"
 Globals="Globals"
 Desktop="Desktop"
@@ -353,38 +353,17 @@ UsedLibrary="/Applications/EAGLE-8.3.2/lbr/coilcraft.lbr"
 UsedLibrary="/Applications/EAGLE-8.3.2/lbr/egr321.lbr"
 UsedLibrary="/Applications/EAGLE-8.3.2/lbr/inductor-coilcraft-2.lbr"
 UsedLibrary="/Applications/EAGLE-8.3.2/lbr/parallax.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/2018.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/Custom.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/Custom_old.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Aesthetics.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-AnalogIC.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Boards.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Capacitors.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Connectors.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-DigitalIC.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-DiscreteSemi.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Displays.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Electromechanical.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-FreqCtrl.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-LED.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Passives.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-PowerIC.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-RF.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Resistors.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Retired.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/SparkFun-Sensors.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/Teensy3.0.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/adafruit.lbr"
-UsedLibrary="/Users/Gerry/Drive/DEV/Technical/Eagle/lib/jet-lib.lbr"
 UsedLibrary="main.lbr"
 
 [Win_1]
+Type="Control Panel"
+Number=0
+
+[Win_2]
 Type="Board Editor"
-Loc="0 -22 1199 617"
-State=0
 Number=4
-File="main.brd"
-View="-12.2715 -8.1436 99.3465 93.9636"
+File="/Users/Gerry/GIT_REPOS/dev-eagle/hall_externalPCB/hall_mitsuba.brd"
+View="-42.3322 -8.02817 5.02448 32.4766"
 WireWidths=" 0.0762 0.1016 0.127 0.15 0.2 0.2032 0.254 0.3048 0.4064 0.508 0.6096 0.8128 1.016 1.27 2.54 0.1524"
 PadDiameters=" 0.254 0.3048 0.4064 0.6096 0.8128 1.016 1.27 1.4224 1.6764 1.778 1.9304 2.1844 2.54 3.81 6.4516 0"
 PadDrills=" 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.65 0.7 0.75 0.8 0.85 0.9 1 0.6"
@@ -424,19 +403,11 @@ AddLevel=2
 PadsSameType=0
 Layer=1
 
-[Win_2]
-Type="Control Panel"
-Loc="42 37 1241 676"
-State=2
-Number=0
-
 [Win_3]
 Type="Schematic Editor"
-Loc="80 138 1279 777"
-State=2
 Number=1
-File="main.sch"
-View="96.6806 99.6241 140.809 137.859"
+File="/Users/Gerry/GIT_REPOS/dev-eagle/hall_externalPCB/hall_mitsuba.sch"
+View="-15.3203 -34.5171 114.329 82.9549"
 WireWidths=" 0.0762 0.1016 0.127 0.15 0.2 0.2032 0.254 0.3048 0.4064 0.508 0.6096 0.8128 1.016 1.27 2.54 0.1524"
 PadDiameters=" 0.254 0.3048 0.4064 0.6096 0.8128 1.016 1.27 1.4224 1.6764 1.778 1.9304 2.1844 2.54 3.81 6.4516 0"
 PadDrills=" 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.65 0.7 0.75 0.8 0.85 0.9 1 0.6"
@@ -475,11 +446,11 @@ ArcDirection=0
 AddLevel=2
 PadsSameType=0
 Layer=91
-Views=" 1: 96.6806 99.6241 140.809 137.859"
+Views=" 1: -15.3203 -34.5171 114.329 82.9549"
 Sheet="1"
 
 [Desktop]
-Screen="640 480"
+Screen="1680 1050"
 Window="Win_1"
 Window="Win_2"
 Window="Win_3"

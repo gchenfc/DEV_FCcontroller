@@ -21,17 +21,19 @@ Metro watchdogTimer = Metro(10);
 Metro lapPurgeTimer = Metro(210000);
 
 void setup() {// board setting vars
-  kickDog();
+  setupWatchdog();
   
   delay(100);
   Serial.println("Finished Initiazing");
   Serial.begin(115200);
   Serial.println("Beginning setup");
   
-  FC.enabled = false;
-  SC.enabled = false;
+  kickDog();
+
+  FC.enabled = true;
+  SC.enabled = true;
   Conv.enabled = true;
-  FC.purgeEnabled = false;
+  FC.purgeEnabled = true;
   Conv.shortCircuitEnabled = false;
 
   Stats.initializeStats();
@@ -46,12 +48,15 @@ void setup() {// board setting vars
   analogWriteResolution(PWM_RES);
   analogWriteFrequency(FAN, 20000);
 
-//  analogReference(EXTERNAL);
+  analogReadResolution(12);
+  analogReadAveraging(16);
+  analogReference(EXTERNAL);
   
   startTime = millis();
   
   Serial.println("Finished setup");
   Serial.println("Beginning Loop");
+  kickDog();
 }
 
 void loop() {
@@ -94,9 +99,59 @@ void loop() {
 
 void kickDog()
 {
-  noInterrupts();
-  WDOG_REFRESH = 0xA602;
-  WDOG_REFRESH = 0xB480;
-  interrupts();
+  #if defined(__MKL26Z64__)
+    // Teensy LC
+    __disable_irq();
+    SIM_SRVCOP = 0x55;
+    SIM_SRVCOP = 0xAA;
+    __enable_irq();
+  #elif defined(__MK20DX128__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
+    // Teensy 3.x
+    noInterrupts();
+    WDOG_REFRESH = 0xA602;
+    WDOG_REFRESH = 0xB480;
+    interrupts();
+  #else
+    #error // watchdog not configured - comment out this line if you are ok with no watchdog
+  #endif
+
   digitalWriteFast(LED4,!digitalReadFast(LED4));
+}
+
+#if defined(__MKL26Z64__)
+extern "C" void startup_early_hook(void) {}
+#endif
+
+void setupWatchdog()
+{
+  #if defined(__MKL26Z64__)
+    // Teensy LC
+    SIM_COPC = 12; // 1024ms watchdog
+    SIM_COPC = 8; // 256ms watchdog
+    SIM_COPC = 4; // 32ms watchdog
+  #elif defined(__MK20DX128__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
+    // Teensy 3.x
+    // kickDog();
+    noInterrupts();                                         // don't allow interrupts while setting up WDOG
+    WDOG_UNLOCK = WDOG_UNLOCK_SEQ1;                         // unlock access to WDOG registers
+    WDOG_UNLOCK = WDOG_UNLOCK_SEQ2;
+    delayMicroseconds(1);                                   // Need to wait a bit..
+    
+    // about 0.25 second timeout
+    WDOG_TOVALH = 0x001B;
+    WDOG_TOVALL = 0x7740;
+    
+    // This sets prescale clock so that the watchdog timer ticks at 7.2MHz
+    WDOG_PRESC  = 0x400;
+    
+    // Set options to enable WDT. You must always do this as a SINGLE write to WDOG_CTRLH
+    WDOG_STCTRLH |= WDOG_STCTRLH_ALLOWUPDATE |
+        WDOG_STCTRLH_WDOGEN | WDOG_STCTRLH_WAITEN |
+        WDOG_STCTRLH_STOPEN | WDOG_STCTRLH_CLKSRC;
+    interrupts();
+  #else
+    #error // watchdog not configured
+  #endif
+
+  kickDog();
 }
