@@ -35,6 +35,8 @@ class FCController{
 		FCController();
 		void doSafetyChecks(bool shortCircuit,double* setpointPower);
 		void bootup();
+		void bootupShortOnly();
+		void bootupSmallPurge();
     void postStartup();
 		void shutdown();
 		void emergencyPause();

@@ -38,9 +38,9 @@ void FCController::doSafetyChecks(bool shortCircuit,double* setpointPower){
     emergencyPause();
   }
   if ((voltage<12) && (voltage!=0) && (!shortCircuit)) {
-    *setpointPower = max(*setpointPower-(voltage-11)/1,10);
+    *setpointPower = max(*setpointPower-(12-voltage)/1,10);
   }
-  if (((voltage<11) && (voltage!=0) && (!(shortCircuit || requestShort))) || (voltage>20)){
+  if (((voltage<10.5) && (voltage!=0) && (!(shortCircuit || requestShort))) || (voltage>20)){
     sprintf(errorMsg,"%sFC voltage out of range... "
       "%.3fV\n",errorMsg,voltage);
     errorDisp = true;
@@ -70,6 +70,30 @@ void FCController::bootup(){
 
   digitalWrite(PURGE,HIGH);
   postStartupTimer.interval(3000);
+  postStartupTimer.reset();
+  startingUp = FCController::STARTUP_STATE::STARTUP_PURGE;
+}
+void FCController::bootupShortOnly(){
+  enabled = true;
+  Serial.println("Booting up Fuel Cell with shorting only (no purge)");
+  // analogWrite(FAN,.8*MAXPWM);
+  digitalWrite(SUPPLY,HIGH);
+  purgeTimer.reset();
+
+  // digitalWrite(PURGE,HIGH);
+  postStartupTimer.interval(1);
+  postStartupTimer.reset();
+  startingUp = FCController::STARTUP_STATE::STARTUP_PURGE;
+}
+void FCController::bootupSmallPurge(){
+  enabled = true;
+  Serial.println("Booting up Fuel Cell with abbreviated purge (100ms)");
+  // analogWrite(FAN,.8*MAXPWM);
+  digitalWrite(SUPPLY,HIGH);
+  purgeTimer.reset();
+
+  digitalWrite(PURGE,HIGH);
+  postStartupTimer.interval(100);
   postStartupTimer.reset();
   startingUp = FCController::STARTUP_STATE::STARTUP_PURGE;
 }

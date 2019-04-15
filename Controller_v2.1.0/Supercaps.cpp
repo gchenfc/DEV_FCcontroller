@@ -18,7 +18,7 @@ void Supercaps::doSafetyChecks(double* setpointPower){
 		errorDisp = true;
 		allGood = false;
     fault = false; // definitely don't make this true - this is needed to keep the converter on while it recharges the supercaps
-		*setpointPower=min(*setpointPower+(26.1-voltage)*.1,MAXDESPOWER); // pseudocode
+		*setpointPower=min(*setpointPower+(25.1-voltage)*.1,MAXDESPOWER); // pseudocode
 //    if (*setpointPower > 100){
 //      *setpointPower = 100;
 //  	}

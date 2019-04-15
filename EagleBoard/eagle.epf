@@ -356,14 +356,10 @@ UsedLibrary="/Applications/EAGLE-8.3.2/lbr/parallax.lbr"
 UsedLibrary="main.lbr"
 
 [Win_1]
-Type="Control Panel"
-Number=0
-
-[Win_2]
 Type="Board Editor"
-Number=4
-File="/Users/Gerry/GIT_REPOS/dev-eagle/hall_externalPCB/hall_mitsuba.brd"
-View="-42.3322 -8.02817 5.02448 32.4766"
+Number=2
+File="/Users/Gerry/GIT_REPOS/dev-eagle/DEV_BMS2/main.brd"
+View="0.229631 29.6018 20.4631 44.8422"
 WireWidths=" 0.0762 0.1016 0.127 0.15 0.2 0.2032 0.254 0.3048 0.4064 0.508 0.6096 0.8128 1.016 1.27 2.54 0.1524"
 PadDiameters=" 0.254 0.3048 0.4064 0.6096 0.8128 1.016 1.27 1.4224 1.6764 1.778 1.9304 2.1844 2.54 3.81 6.4516 0"
 PadDrills=" 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.65 0.7 0.75 0.8 0.85 0.9 1 0.6"
@@ -382,7 +378,7 @@ SmdSizes=" 0.3048 0.1524 0.4064 0.2032 0.6096 0.3048 0.8128 0.4064 1.016 0.508 1
 WireBend=1
 WireBendSet=0
 WireCap=1
-MiterStyle=0
+MiterStyle=1
 PadShape=0
 ViaShape=1
 PolygonPour=0
@@ -403,11 +399,11 @@ AddLevel=2
 PadsSameType=0
 Layer=1
 
-[Win_3]
+[Win_2]
 Type="Schematic Editor"
 Number=1
-File="/Users/Gerry/GIT_REPOS/dev-eagle/hall_externalPCB/hall_mitsuba.sch"
-View="-15.3203 -34.5171 114.329 82.9549"
+File="/Users/Gerry/GIT_REPOS/dev-eagle/DEV_BMS2/main.sch"
+View="143.32 88.0435 220.435 116.233"
 WireWidths=" 0.0762 0.1016 0.127 0.15 0.2 0.2032 0.254 0.3048 0.4064 0.508 0.6096 0.8128 1.016 1.27 2.54 0.1524"
 PadDiameters=" 0.254 0.3048 0.4064 0.6096 0.8128 1.016 1.27 1.4224 1.6764 1.778 1.9304 2.1844 2.54 3.81 6.4516 0"
 PadDrills=" 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.65 0.7 0.75 0.8 0.85 0.9 1 0.6"
@@ -426,7 +422,7 @@ SmdSizes=" 0.3048 0.1524 0.4064 0.2032 0.6096 0.3048 0.8128 0.4064 1.016 0.508 1
 WireBend=0
 WireBendSet=31
 WireCap=1
-MiterStyle=0
+MiterStyle=1
 PadShape=0
 ViaShape=1
 PolygonPour=0
@@ -446,8 +442,12 @@ ArcDirection=0
 AddLevel=2
 PadsSameType=0
 Layer=91
-Views=" 1: -15.3203 -34.5171 114.329 82.9549"
+Views=" 1: 143.32 88.0435 220.435 116.233"
 Sheet="1"
+
+[Win_3]
+Type="Control Panel"
+Number=0
 
 [Desktop]
 Screen="1680 1050"

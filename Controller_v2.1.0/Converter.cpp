@@ -77,7 +77,7 @@ void Converter::doSafetyChecks(){
 		allGood = false;
 		pause();
 	}
-	if (*SCvoltage>35){
+	if (*SCvoltage>38){
 		Serial.print("Too much output voltage - converter pausing... ");
 		Serial.print(*SCvoltage,3);
 		Serial.println("V");
@@ -310,8 +310,12 @@ void Converter::update(){
 	}
 	
 	if (enabled && (((updateDCTimer.check()) && (!shortCircuit)) || (shortCircuitStatus==SC_RECOV))){
-		error = setpointPower - (*FCpower);
+		error = min(setpointPower - (*FCpower),10);
+		float dutyCyclePrev = dutyCycle;
 		pid.update();
+		if (dutyCycle > (dutyCyclePrev + DC_CONV_SLEWLIM*.001)){
+			dutyCycle = dutyCyclePrev + DC_CONV_SLEWLIM*.001;
+		}
 		updateSetpoint();
 	
 		//  dutyCycle = dutyCycleBase+dutyCycleAdj;

@@ -2,10 +2,13 @@
 #define Constants_h
 
 // FC control stuff
-#define PURGE_INTERVAL 30000
+#define PURGE_INTERVAL 90000
 #define SHORT_INTERVAL 30000
 #define PURGE_DURATION 20
 #define SHORT_DURATION 10
+
+// Converter stability
+#define DC_CONV_SLEWLIM .075
 
 // technical PWM stuff
 #define TPM_C 48000000            // core clock, for calculation only

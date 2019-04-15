@@ -53,6 +53,13 @@
 #define I2CcomDCM	0x2D
 #define I2CcomCCM	0x2E
 
+#define I2C_WRITE_PURGE 0x50
+#define I2C_WRITE_SHORT 0x51
+
+#define I2C_WRITE_BOOTUP 0X58
+#define I2C_WRITE_BOOTUPSHORTONLY 0x59
+#define I2C_WRITE_BOOTUPSMALLPURGE 0x5A // purge for 500ms
+
 volatile bool i2cDoCMD;
 volatile bool i2cCMDerror;
 volatile uint8_t i2cCMD;
@@ -88,6 +95,7 @@ void i2cReadVal(uint8_t cmd);
 void i2cmemStore(int32_t val);
 void i2cDoCmd(uint8_t cmd, int32_t val);
 void i2cRequestEvent();
+void i2cDoDriverCMD(uint8_t cmd);
 
 bool buzzersEnabled = false;
 
@@ -95,11 +103,13 @@ Metro DIPcheckTimer = Metro(50);
 bool DIP1bounce,DIP2bounce,DIP3bounce,DIP4bounce;
 
 void Comm_setup(){
-  // Wire1.begin(I2C_SLAVE, I2Caddress, I2C_PINS_29_30, I2C_PULLUP_EXT, I2Cspeed);
-  // pinMode(18,INPUT);
-  // pinMode(19,INPUT);
-  // Wire1.onReceive(i2cReceiveEvent);
-  // Wire1.onRequest(i2cRequestEvent);
+  #ifdef USE_I2C_BMS
+  Wire1.begin(I2C_SLAVE, I2Caddress, I2C_PINS_29_30, I2C_PULLUP_EXT, I2Cspeed);
+  pinMode(18,INPUT);
+  pinMode(19,INPUT);
+  Wire1.onReceive(i2cReceiveEvent);
+  Wire1.onRequest(i2cRequestEvent);
+  #endif
 
   i2cDoCMD = false;
   i2cCMDerror = false;
@@ -425,6 +435,9 @@ void i2cReceiveEvent(size_t count) {
 					i2cDoCMD = true; // will process during next call to update()
 				}
 				break;
+      case (I2C_WRITE_PURGE>>4):
+        i2cDoDriverCMD(i2cCMD);
+        break;
 		}
 	}
 }
@@ -533,6 +546,35 @@ void i2cRequestEvent(void){
 			Wire1.write(&i2cmem[0],4);
 			break;
 	}
+}
+void i2cDoDriverCMD(uint8_t cmd){
+  bool tmp;
+  switch (cmd){
+    case I2C_WRITE_PURGE:
+      FC.startPurge();
+      break;
+    case I2C_WRITE_SHORT:
+      tmp = Conv.shortCircuitEnabled;
+      Conv.shortCircuitEnabled = true;
+      Conv.startShortCircuit();
+      Conv.shortCircuitEnabled = tmp;
+      break;
+    case I2C_WRITE_BOOTUP:
+      FC.bootup();
+      Conv.resume();
+      Conv.pause(5500+500); // 500ms buffer time
+      break;
+    case I2C_WRITE_BOOTUPSHORTONLY:
+      FC.bootupShortOnly();
+      Conv.resume();
+      Conv.pause(2500+500); // 500ms buffer time
+      break;
+    case I2C_WRITE_BOOTUPSMALLPURGE:
+      FC.bootupSmallPurge();
+      Conv.resume();
+      Conv.pause(2600+500); // 500ms buffer time
+      break;
+  }
 }
 
 #endif

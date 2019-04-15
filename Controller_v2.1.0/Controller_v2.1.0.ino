@@ -1,3 +1,5 @@
+#define USE_I2C_BMS
+
 #include "Controller.h"
 #include "Converter.h"
 #include "Supercaps.h"
@@ -6,7 +8,7 @@
 #include "Metro.h"
 
 uint32_t startTime;
-double desPowerIn = 23;
+double desPowerIn = 70;
 
 FCController FC = FCController();
 Supercaps SC = Supercaps();
